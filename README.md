@@ -32,12 +32,22 @@ Optional: `ANTHROPIC_API_KEY=sk-... npm start` adds a plain-language Claude expl
 2. Me tab -> copy your key -> paste into `TOKEN` in `Code.gs`.
 3. script.google.com -> new project -> paste both files (show manifest in settings) -> Deploy -> Test deployment -> Gmail add-on.
 
-## Android SMS automation (MacroDroid / Tasker)
-- Trigger: SMS received, sender NOT in contacts.
-- Action: HTTP POST `https://<your-tunnel>/api/analyze`, header `Authorization: Bearer <key>`,
-  JSON body `{"body":"[sms_message]"}` (no phone numbers are sent or stored).
-- If response `level` is `high` or `medium`: show a notification with `headline`. Nothing is texted to anyone.
-- Permissions needed: receive SMS and read contacts (to skip saved numbers). No send-SMS permission.
+## Android text-message app (android/)
+A small Kotlin app that checks texts from numbers that are NOT in your contacts and shows a warning notification.
+- Only the message text of unknown senders goes to `/api/analyze` (no phone numbers, nothing stored). Saved contacts are checked on the phone and never sent.
+- Permissions: receive SMS and read contacts (to skip saved numbers), plus notifications. No send-SMS permission.
+- Build and install on the emulator (needs Android Studio's Java; first build downloads Gradle):
+
+      cd android
+      export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+      ./gradlew assembleDebug
+      ~/Library/Android/sdk/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+- Open "SwivProtect Texts" on the phone, paste your key (SwivProtect app: Me, then Edit profile), tap "Allow what is needed", then "Test the connection".
+- Server address: `http://localhost:3000` works on the emulator after `adb reverse tcp:3000 tcp:3000`. On a real phone use an https address (plain http is only allowed to localhost and 10.0.2.2).
+- Tapping a warning opens a popup about that specific scam (what it is, what to do, the warning words found) with a **Report this scam** button that asks only "Did you lose money?" and files the report as an SMS report. The tips live in `data/catalog.json` (`tips` per scam).
+- Try it: `adb emu sms send 5551234 "Your package could not be delivered. Pay the redelivery fee at usps-redeliver.top"`.
+  Save 5551234 as a contact and send again to see it ignored.
 
 ## Running on an Android phone
 It is a web app that installs like an app (manifest + service worker).

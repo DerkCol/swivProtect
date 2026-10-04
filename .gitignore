@@ -10,3 +10,10 @@ __pycache__/
 
 # Swivel's registered logo: keep private; add your own copy to public/ locally
 public/swivel-logo.svg
+
+# Android build output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk

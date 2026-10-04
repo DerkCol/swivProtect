@@ -349,7 +349,7 @@ $('saveProfile').onclick = async () => {
 $('analyze').onclick = async () => {
   const r = await api('/api/analyze', 'POST', { subject: $('subj').value, body: $('body').value });
   $('result').innerHTML = `<div class="card ${r.level === 'low' ? 'ok' : 'high'}"><h2 style="margin-top:0">${esc(r.headline)}</h2>
-    ${r.scam ? `<p>Looks like: <strong>${esc(r.scam.name)}</strong></p><p class="small">${esc(r.scam.summary)}</p>` : ''}
+    ${r.scam ? `<p>Looks like: <strong>${esc(r.scam.name)}</strong></p><p class="small">${esc(r.scam.summary)}</p><p class="small"><b>What to do:</b></p><ul class="small">${r.scam.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
     ${r.ai ? `<p>${esc(r.ai)}</p>` : ''}
     ${r.hits.length ? '<p class="small">Warning signs: ' + r.hits.map(h => `<span class="pill">${esc(h)}</span>`).join('') + '</p>' : ''}
     ${r.community ? `<p class="small">${r.community} people like you reported this scam in the past month.</p>` : ''}
