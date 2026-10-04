@@ -37,7 +37,7 @@ Two recordings: a ~5 minute app demo and a ~2 minute Gmail add-on demo. Times ar
 | 3:30 | **Check a message** | Paste anything suspicious and see it checked against known scams. | Home, Check a message, paste: `IRS notice: arrest warrant issued. Pay back taxes today with gift cards https://irs-pay.top` |
 | 4:00 | **AFTER:** Report a scam, 4 taps | Never more than five big buttons at a time. If someone lost money, they get clear steps right away. | Report a scam, Government, Government impersonation, Text message, "Yes, I lost money" |
 | 4:40 | Home, Your reports | Reports feed the alerts for the next person. Names are never shared. | Back to home, scroll to Your reports |
-| 4:50 | Closing line | Roadmap: Gmail add-on today, iPhone next. | Optional: say the closed-app point below |
+| 4:50 | Closing line | Roadmap: Gmail add-on today, instant push alerts next. | Optional: say the closed-app point below |
 
 Optional line about the app being closed: a scam text is checked the moment it arrives even if the app is closed. Community alerts reach a closed app within about 15 minutes.
 
@@ -83,7 +83,7 @@ You do not need to know the files. You need to be able to explain the **product,
 ### Say these limits yourself, before anyone asks
 - Detection is **rules and word lists, not AI**. That is deliberate: predictable, explainable, private, free per message.
 - The data you show is **demo data**. The 20 scam types are: 5 from the FTC's 2024 text-scam report, 3 from the FBI's phishing categories (that page could not be opened to double-check them), and 12 from general scam knowledge.
-- **iPhone cannot read texts.** Apple does not allow it, so the iPhone version would use Apple's message filter and show results later. Web and Gmail work on iPhone.
+- **Text checking is Android only.** The web app and the Gmail add-on work in any browser, but automatic text checking needs the Android app.
 - The Gmail add-on is a **test install** in one account. Public release needs Google's review.
 - Alerts to a **closed** app can be up to ~15 minutes late. Instant delivery needs Google's push service (next step).
 - Reports are not identity-verified yet (one report per person per scam, plus caps).

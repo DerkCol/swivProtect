@@ -66,5 +66,5 @@ export async function startServer(env = {}) {
     if (r.status !== 201) throw new Error('signup failed: ' + JSON.stringify(r));
     return r.json;
   };
-  return { call, signup, logs: () => logs, stop: () => { child.kill(); fs.rmSync(dir, { recursive: true, force: true }); } };
+  return { port, call, signup, logs: () => logs, stop: () => { child.kill(); fs.rmSync(dir, { recursive: true, force: true }); } };
 }

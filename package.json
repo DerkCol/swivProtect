@@ -8,5 +8,8 @@
     "demo": "node demo-seed.js",
     "reset": "rm -f data/live.db",
     "test": "node --test \"test/*.test.mjs\""
+  },
+  "engines": {
+    "node": ">=22.13"
   }
 }

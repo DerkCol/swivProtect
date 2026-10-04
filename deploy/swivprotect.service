@@ -1,0 +1,27 @@
+# systemd unit: keeps SwivProtect running, restarts it if it crashes, and starts it when the server boots.
+# Install: sudo cp deploy/swivprotect.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now swivprotect
+[Unit]
+Description=SwivProtect server
+After=network.target
+
+[Service]
+Type=simple
+User=swivprotect
+Group=swivprotect
+WorkingDirectory=/opt/swivprotect
+EnvironmentFile=/etc/swivprotect.env
+# check the path with: which node
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+
+# the server needs very little, so give it very little
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/swivprotect/data
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

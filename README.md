@@ -27,6 +27,10 @@ Optional: `ANTHROPIC_API_KEY=sk-... npm start` adds a plain-language Claude expl
 - **During**: `/api/analyze` scans a message against the catalog's red flags. Used by the Check tab, the Gmail add-on and the Android text checker.
 - **After**: Report tab. Victims get recovery steps; everyone's report feeds the alerts above.
 
+## Putting it on a server
+See [docs/DEPLOY.md](docs/DEPLOY.md): a step-by-step guide for a Linux server (Node, a systemd service, Caddy for HTTPS, backups, updating, troubleshooting), with ready-made files in `deploy/`. On AWS (EC2, from the console, using the zip built by `deploy/make-zip.sh`): [docs/DEPLOY-AWS.md](docs/DEPLOY-AWS.md).
+`/healthz` answers `ok` when the server and database are fine (for uptime checks).
+
 ## Abuse protection (server.js)
 Added after testing showed 100 simultaneous sign-ups, unlimited password guesses, a 1 MB name and a 40 MB upload were all accepted. Now:
 - **Size:** a request body over 100 KB is refused (413) without being read (`MAX_BODY_BYTES`). Name 80, email 254, password 128 characters. Only the first 20,000 characters of a message are scanned.

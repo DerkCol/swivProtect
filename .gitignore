@@ -27,3 +27,6 @@ android/local.properties
 session-export*
 private/
 .github/modernize/
+
+# built deployment zips (may contain the private logo)
+dist/

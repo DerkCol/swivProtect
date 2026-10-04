@@ -1,6 +1,6 @@
 # SwivProtect handoff (read this first)
 
-Written 2026-10-03 for another Claude agent (or person) continuing this project, for example on a Mac with Xcode.
+Written 2026-10-03 for another Claude agent (or person) continuing this project.
 It summarizes a long working session: what exists, why it is the way it is, what is decided, what is pending, and the traps found.
 Nothing here is a secret. Do not paste access tokens or passwords into chat or files.
 
@@ -73,6 +73,9 @@ Two SQLite files, both attached on one connection in server.js. See `docs/ERD-de
 Auth: `Authorization: Bearer <token>`. Routes: `/api/options`, `/api/catalog`, `/api/signup`, `/api/login`, `/api/me` (GET/PUT),
 `/api/reports` (POST), `/api/my-reports`, `/api/notifications`, `/api/stats`, `/api/analyze` (POST, the "during attack" check),
 `/api/link-code` (POST, signed-in user gets a one-time code), `/api/link-gmail` (POST, Google token + code), `/api/unlink-gmail` (POST).
+
+Deployment kit (added when the group got a server): `docs/DEPLOY.md` (generic Linux), `docs/DEPLOY-AWS.md` (AWS console, EC2, zip from `deploy/make-zip.sh`) plus `deploy/` (systemd unit, Caddyfile, env example, backup script). The server has `GET /healthz` (200 `ok` if the database answers; not rate limited) and an optional `HOST` setting
+(use `127.0.0.1` behind a proxy; `TRUST_PROXY=1` is only safe together with it). Not yet verified on the group's real server (OS, domain and access were not known). The Android app has no build-time default server address: on a real server the owner types the https address on its first-launch screen.
 
 Abuse protection (added after a flood test; see README "Abuse protection"): body cap 100 KB (413), field lengths, per-address and per-person rate limits (429 + Retry-After) held in memory in `server.js` (`LIMITS`, `take()`),
 per-account lockout after 10 wrong passwords, no CORS, security headers, `TRUST_PROXY` / `RATE_LIMITS` / `MAX_BODY_BYTES` settings, JWKS address must be https. Tests: `test/hardening.test.mjs`. The web app pauses its refresh when hidden and honours Retry-After.
@@ -169,45 +172,17 @@ and the `gh` CLI is not installed. The owner chose to skip GitHub for now. To pu
    read the audience from the `SWIVEL_DEBUG=1` home card, and restart the server with `GOOGLE_AUDIENCE`. Not possible for anyone to do silently for end users: Google requires each account owner (or their Workspace admin) to approve access.
    Routes to real users: test install (no review), private install by a Workspace admin (no Google review), public Marketplace (Google review; `gmail.addons.current.message.readonly` is a "sensitive" scope).
    Add-ons only run when an email is opened; they cannot warn on arrival. The owner does NOT need the add-on to work on other devices for the demo.
-2. **iOS expansion** (exploring, nothing built). See section 10.
-3. Commit the pending work and eventually push to GitHub.
-4. Optional ideas raised but not decided: translating the app's own UI text and the tips into the other four languages (owner said no to translating scam names; tips stay English),
+2. Commit the pending work and eventually push to GitHub.
+3. Optional ideas raised but not decided: translating the app's own UI text and the tips into the other four languages (owner said no to translating scam names; tips stay English),
    web push for alerts when the app is closed, a `npm run backup`, a test that runs the alert-rule scenarios against the real server.
 
-## 10. iOS plan (for an agent on a Mac with Xcode)
-
-Goal: bring SwivProtect to iPhone as far as Apple allows. Be honest in the pitch about the limits.
-
-What carries over easily:
-- The **web app** runs in Safari and can be added to the Home Screen (add `apple-touch-icon`, `apple-mobile-web-app-*` meta, check safe-area insets). iOS 16.4+ supports web push only for Home Screen web apps.
-- An **iPhone app wrapper**: a `WKWebView` loading the same server, mirroring `MainActivity`. A `WKScriptMessageHandler` can mirror the `SwivNative` bridge
-  (saveSession / clearSession / notify / permissions). On the iOS Simulator, `localhost:3000` reaches the Mac's server directly (no `adb reverse` equivalent needed).
-  Use `mcp__Claude_Code_iOS_Simulator__control` (attach first) to run and screenshot the app if that tool is available.
-- The **Gmail add-on** also works in the Gmail iOS app.
-
-What does NOT carry over: apps cannot read incoming SMS on iOS, so there is no equivalent of `SmsReceiver`. The Apple-sanctioned route is an
-**SMS Message Filter extension** (Identity Lookup, `ILMessageFilterExtension`). Notes from the design discussion (from memory, VERIFY against Apple's docs):
-- The user enables it in Settings > Messages > Unknown & Spam > SMS Filtering. iOS passes the sender and body of SMS/MMS from **unknown senders** to the extension.
-  It answers allow / junk / promotion / transaction. A junked message lands in the Junk list silently.
-- The extension has no network of its own. It can classify locally, or call `deferQueryRequestToNetwork` so the system sends the query to a server URL declared in its
-  Info.plist through Apple's relay (anonymized, so the server cannot know which user it is; it cannot push a warning to that person).
-- Recommended design: classify **on the phone** using the red-flag words from the catalog. The main app copies the catalog's words into an **App Group** shared container
-  for the extension to read. The extension writes a small note (scam type, matched words, time; avoid storing the full text) for each junked message into the
-  same container; the main app shows "We moved N suspicious texts to Junk" with scam info and a Report button the next time it opens.
-- UNVERIFIED: whether the extension can post a local notification (believed not reliable). Test on a real iPhone. A best-effort fallback is a background-refresh wake of the main app.
-- Cannot show popups, cannot auto-file a report tied to the user, does not see iMessage (believed). Needs a **real iPhone** with a SIM to test (believed the simulator cannot deliver SMS to the filter), Developer Mode, and signing.
-  A free Apple ID gives short-lived installs on the owner's own device (uncertain for extensions); TestFlight/App Store needs the paid Apple Developer Program (~$99/year).
-- Ask the owner first: do they have an iPhone to test with? If not, put the filter on a roadmap slide and demo only the web wrapper in the simulator.
-
-This Mac (when the session was written) had only Command Line Tools, no Xcode. The owner asked whether installing Xcode makes iOS possible: it makes the app wrapper and simulator work possible and the filter compilable, but the filter still needs a real device.
-
-## 11. Environment notes (the machine the session ran on)
+## 10. Environment notes (the machine the session ran on)
 
 macOS (Darwin 25.3), Apple Silicon (arm64), the owner's user account, zsh. Node v24.14.1, Python 3, git 2.50.1, Android Studio 2026.2,
 Android SDK at `~/Library/Android/sdk` (emulator with Pixel 8a and "Medium Phone", both API 37 / Android 17 arm64, Google Play images; adb works). No `gh`, no `ngrok`, no `cloudflared` yet.
 On a new Mac: install Node 24+, Python 3, and for Android work Android Studio; paths above will differ.
 
-## 12. Source of truth for decisions (short log)
+## 11. Source of truth for decisions (short log)
 
 - 20 scams in 5 categories of 4 (grouping in `catalog.json`); owner liked the category -> subcategory report flow.
 - Red flags are preset words in the static catalog, per language; alerts show 3-5 of them: "Hey, others like you have been receiving prominent scam attempts. Some words to look out for: ...".
@@ -219,7 +194,7 @@ On a new Mac: install Node 24+, Python 3, and for Android work Android Studio; p
 - Report stays one-per-person-per-scam; ethnicity was dropped from the data model.
 - Gmail add-on identifies people by Google sign-in plus a one-time link code (no key to paste); a key mode remains for a single tester. The owner approved "match by Gmail address"; the code step was added to close the unverified-email hole.
 
-## 13. A raw transcript also exists
+## 12. A raw transcript also exists
 
 The full conversation was exported by the owner's request to `~/Downloads/session-export-*.zip` (about 38 MB, mostly screenshots). This document is the readable summary; use the transcript only to recover exact wording.
 It is outside the repository on purpose and should not be committed.

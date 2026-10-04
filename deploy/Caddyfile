@@ -1,0 +1,6 @@
+# Caddy gets and renews the HTTPS certificate by itself. Replace the address with your real domain name.
+# Install: sudo cp deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+swivprotect.example.org {
+	encode gzip
+	reverse_proxy 127.0.0.1:3000
+}

@@ -282,6 +282,10 @@ const send = (res, code, obj, extra = {}) => { res.writeHead(code, { 'content-ty
 
 async function route(req, res, url) {
   const p = url.pathname, m = req.method;
+  if (p === '/healthz') {   // for uptime checks: answers 200 only if the database responds. Not rate limited; reveals nothing.
+    try { q('SELECT 1').get(); } catch { res.writeHead(503, { ...SECURITY, 'cache-control': 'no-store' }); return res.end('database unavailable'); }
+    res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store', ...SECURITY }); return res.end('ok');
+  }
   if (p.startsWith('/api/')) {   // allowances per address, before any work is done
     const ip = clientIp(req);
     if (m === 'POST' && p === '/api/signup') { take('signupIp', ip); take('signupAll', '*'); }
@@ -406,4 +410,6 @@ const server = http.createServer(async (req, res) => {
 });
 server.requestTimeout = 30_000;   // a request that takes longer than this to arrive is dropped
 server.headersTimeout = 15_000;
-server.listen(PORT, () => console.log(`Swivel running at http://localhost:${PORT}`));
+// In production behind a proxy, set HOST=127.0.0.1 so the only way in is through the proxy (and TRUST_PROXY=1 cannot be fooled by a direct connection).
+const HOST = process.env.HOST || undefined;
+server.listen(PORT, HOST, () => console.log(`Swivel running at http://${HOST || 'localhost'}:${PORT}`));

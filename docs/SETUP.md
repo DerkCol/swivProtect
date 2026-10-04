@@ -8,6 +8,7 @@ npm run setup     # once: builds the scam catalog database
 npm start         # http://localhost:3000
 npm test          # 47 automated tests
 ```
+To put it on a real server: `docs/DEPLOY.md`, or on Amazon Web Services `docs/DEPLOY-AWS.md`.
 Read next: `docs/HANDOFF.md` (what exists and why), `docs/DEMO.md` (how to demo it), `docs/ERD-detailed.md` (the database).
 
 ## What is private, and where it lives
@@ -32,6 +33,7 @@ cd private && ./install.sh
 | Name | What it does |
 |---|---|
 | `PORT` | server port, default 3000 |
+| `HOST` | address to listen on. Leave unset for development; on a real server set `127.0.0.1` so only the HTTPS front end can reach it (see `docs/DEPLOY.md`) |
 | `GOOGLE_AUDIENCE` | turns on Gmail add-on sign-in; the OAuth client ID(s) the add-on's token is issued to |
 | `TRUST_PROXY=1` | behind a proxy or tunnel that sets `X-Forwarded-For`, so rate limits tell people apart |
 | `RATE_LIMITS` | `'{"signupIp":5}'` changes a limit; `off` disables all (development only) |
