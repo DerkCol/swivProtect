@@ -18,6 +18,18 @@ object Notifier {
         Build.VERSION.SDK_INT < 33 ||
             c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
+    /** A plain notification (community alerts from the web app). Tapping it opens the app. */
+    fun showSimple(c: Context, id: Int, title: String, body: String) {
+        if (!canNotify(c)) return
+        val nm = c.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel("community_alerts", "Community alerts", NotificationManager.IMPORTANCE_HIGH))
+        val open = PendingIntent.getActivity(c, id, Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        nm.notify(id, Notification.Builder(c, "community_alerts").setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle(title).setContentText(body).setStyle(Notification.BigTextStyle().bigText(body))
+            .setContentIntent(open).setAutoCancel(true).build())
+    }
+
     fun show(c: Context, r: Api.Result) {
         if (!canNotify(c)) return
         val nm = c.getSystemService(NotificationManager::class.java)
