@@ -30,3 +30,17 @@ private/
 
 # built deployment zips (may contain the private logo)
 dist/
+
+# API keys and credentials (Anthropic, Google, Apps Script, Android signing)
+*.key
+secrets/
+secrets.*
+credentials*.json
+service-account*.json
+client_secret*.json
+google-services.json
+.clasp.json
+.clasprc.json
+keystore.properties
+*.p12
+*.pfx

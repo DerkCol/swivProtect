@@ -92,3 +92,7 @@ It is a web app that installs like an app (manifest + service worker).
 
 ## Brand logo
 `public/swivel-logo.svg` is Swivel's registered logo and is deliberately not in the repo. Copy it into `public/` to see it; without it the app shows a plain "SwivProtect" title.
+
+## Contributors
+- Derek Colon (DerekCol), project owner
+- Claude (Anthropic), AI coding assistant: co-authored the code and documentation
