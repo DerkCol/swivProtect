@@ -6,8 +6,6 @@
     npm run demo      # in a second terminal: fires a sample community alert (see below)
     npm run reset     # wipes data/live.db (users, reports, alerts) for a clean start
 
-Optional: `ANTHROPIC_API_KEY=sk-... npm start` adds a plain-language Claude explanation to scam checks.
-
 ## Databases (data/)
 - `catalog.db`  STATIC. 20 base scams, red-flag words in 5 languages, alert templates, FTC stats. Built from `catalog.json`.
   To ship a patch: edit `catalog.json` (add a scam, bump `version`, add a `patches` entry), run `npm run setup`.
