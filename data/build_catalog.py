@@ -11,6 +11,7 @@ for s in cat['scams']:
     for code in L:
         n = len(s['flags'].get(code, []))
         if not 3 <= n <= 5: problems.append(f"scam {s['id']} {s['slug']}: {n} flags for {code} (need 3-5)")
+    if not 2 <= len(s.get('tips', [])) <= 4: problems.append(f"scam {s['id']}: needs 2-4 tips")
     if set(s['sources'].split(',')) - {'SMS', 'Email'}: problems.append(f"scam {s['id']}: bad sources")
 if len({s['id'] for s in cat['scams']}) != len(cat['scams']): problems.append('duplicate scam ids')
 cat_ids = {c['id'] for c in cat['categories']}
@@ -36,6 +37,7 @@ CREATE TABLE red_flags (
   scam_id INTEGER NOT NULL REFERENCES scams(id), language TEXT NOT NULL, position INTEGER NOT NULL, flag TEXT NOT NULL,
   PRIMARY KEY (scam_id, language, position)
 );
+CREATE TABLE tips (scam_id INTEGER NOT NULL REFERENCES scams(id), position INTEGER NOT NULL, tip TEXT NOT NULL, PRIMARY KEY (scam_id, position));   -- 'what to do' shown in the warning popup
 CREATE TABLE notification_templates (language TEXT PRIMARY KEY, template TEXT NOT NULL);   -- {flags} is replaced with 3-5 red-flag words
 CREATE TABLE stats (source TEXT NOT NULL, metric TEXT NOT NULL, value TEXT NOT NULL, note TEXT);
 ''')
@@ -46,6 +48,7 @@ con.executemany('INSERT INTO scams (id, slug, name, summary, category_id, positi
   [(s['id'], s['slug'], s['name'], s['summary'], s['category'], s['position'], s['sources'], s['basis']) for s in cat['scams']])
 con.executemany('INSERT INTO red_flags VALUES (?,?,?,?)',
   [(s['id'], L[c], i, f) for s in cat['scams'] for c in L for i, f in enumerate(s['flags'][c])])
+con.executemany('INSERT INTO tips VALUES (?,?,?)', [(s['id'], i, t) for s in cat['scams'] for i, t in enumerate(s['tips'])])
 con.executemany('INSERT INTO notification_templates VALUES (?,?)', [(L[c], t) for c, t in cat['notification_templates'].items()])
 con.executemany('INSERT INTO stats VALUES (?,?,?,?)', [(s['source'], s['metric'], s['value'], s['note']) for s in cat['stats']])
 con.commit(); con.close()

@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "languages": {"en": "English", "es": "Spanish", "zh": "Chinese", "tl": "Tagalog", "vi": "Vietnamese"},
   "notification_templates": {
     "en": "Hey, others like you have been receiving prominent scam attempts. Some words to look out for: {flags}.",
@@ -16,6 +16,7 @@
     {"id": 5, "name": "Prizes, offers and computer trouble", "summary": "Too-good-to-be-true offers, or a scary warning about your computer."}
   ],
   "patches": [
+    {"version": "1.2.0", "date": "2026-10-03", "note": "Added 3 short what-to-do tips per scam, shown in the text-message warning popup and the Check screen."},
     {"version": "1.1.0", "date": "2026-10-03", "note": "Grouped the 20 scams into 5 categories of 4 for the two-step report flow."},
     {"version": "1.0.0", "date": "2026-10-03", "note": "Initial catalog: 20 base scams with red-flag words in English, Spanish, Chinese, Tagalog and Vietnamese."}
   ],
@@ -33,6 +34,7 @@
   "scams": [
     {"id": 1, "category": 1, "position": 1, "slug": "family-emergency", "name": "Family emergency / grandparent scam", "sources": "SMS,Email", "basis": "General knowledge",
      "summary": "Someone pretending to be a grandchild or relative says they are in jail or hurt and need money right away, and begs you not to tell anyone.",
+     "tips": ["Hang up and call your family member on the number you already have.", "Ask a question only the real person could answer.", "Never send gift cards, wire transfers or cash apps because someone begs you to keep it secret."],
      "flags": {
        "en": ["grandma/grandpa", "don't tell mom", "bail money", "I'm in jail"],
        "es": ["abuela/abuelo", "no le diga a mamá", "dinero de fianza", "estoy en la cárcel"],
@@ -41,6 +43,7 @@
        "vi": ["bà ơi/ông ơi", "đừng nói với mẹ", "tiền bảo lãnh", "con đang bị giam"]}},
     {"id": 2, "category": 2, "position": 1, "slug": "government-impersonation", "name": "Government impersonation (IRS / Social Security)", "sources": "SMS,Email", "basis": "General knowledge; FTC reports government imposter losses of $789M in 2024",
      "summary": "A message claims to be from the IRS, Social Security or another agency and threatens arrest, suspension or fines unless you pay or share your SSN.",
+     "tips": ["Real agencies never demand payment by gift card, wire or crypto.", "Do not give your Social Security number to someone who contacted you first.", "Hang up and call the agency using the number on its official website."],
      "flags": {
        "en": ["IRS / Social Security", "arrest warrant", "back taxes", "suspended"],
        "es": ["IRS / Seguro Social", "orden de arresto", "impuestos atrasados", "suspendido"],
@@ -49,6 +52,7 @@
        "vi": ["IRS / An sinh xã hội", "lệnh bắt giữ", "thuế còn nợ", "bị đình chỉ"]}},
     {"id": 3, "category": 5, "position": 1, "slug": "tech-support-virus", "name": "Tech support / virus popup", "sources": "SMS,Email", "basis": "General knowledge",
      "summary": "A popup, email or text says your computer has a virus and tells you to call a fake support number, then asks for remote access or payment.",
+     "tips": ["Real companies do not show virus warnings that tell you to call them.", "Never give a stranger remote access to your computer.", "Close the page. If you already let someone in, turn the computer off and ask someone you trust for help."],
      "flags": {
        "en": ["virus detected", "call Microsoft support", "remote access", "your computer is locked"],
        "es": ["virus detectado", "llame a soporte de Microsoft", "acceso remoto", "su computadora está bloqueada"],
@@ -57,6 +61,7 @@
        "vi": ["phát hiện virus", "gọi hỗ trợ Microsoft", "truy cập từ xa", "máy tính của bạn bị khóa"]}},
     {"id": 4, "category": 5, "position": 2, "slug": "lottery-inheritance-sweepstakes", "name": "Lottery / inheritance / sweepstakes", "sources": "SMS,Email", "basis": "General knowledge",
      "summary": "You are told you won a prize or are owed an inheritance, but must first pay a fee or share personal details to claim it.",
+     "tips": ["You cannot win a contest you never entered.", "A real prize never asks you to pay a fee first.", "Do not share bank details to claim a prize."],
      "flags": {
        "en": ["you have won", "claim your prize", "processing fee", "inheritance"],
        "es": ["ha ganado", "reclame su premio", "cuota de procesamiento", "herencia"],
@@ -65,6 +70,7 @@
        "vi": ["bạn đã trúng thưởng", "nhận giải thưởng", "phí xử lý", "thừa kế"]}},
     {"id": 5, "category": 4, "position": 1, "slug": "package-delivery", "name": "Fake package delivery / postal alert", "sources": "SMS", "basis": "FTC Top Text Scams 2024 (#1 most reported)",
      "summary": "A text posing as USPS or a courier says a package could not be delivered and sends you to a fake site for a small redelivery fee, which steals your card or SSN.",
+     "tips": ["Do not tap the link. Go to the carrier's real website and type in your tracking number.", "USPS does not ask for payment or personal details by text.", "Delete the text and block the number."],
      "flags": {
        "en": ["package could not be delivered", "redelivery fee", "USPS / tracking", "confirm address"],
        "es": ["no se pudo entregar su paquete", "cargo de reenvío", "USPS / rastreo", "confirme su dirección"],
@@ -73,6 +79,7 @@
        "vi": ["không giao được gói hàng", "phí giao lại", "USPS / theo dõi đơn", "xác nhận địa chỉ"]}},
     {"id": 6, "category": 2, "position": 2, "slug": "traffic-ticket", "name": "Fake traffic stop / unpaid ticket", "sources": "SMS,Email", "basis": "General knowledge",
      "summary": "A message claiming to be from the DMV, court or police says you owe an unpaid traffic ticket and threatens license suspension unless you pay now through a link.",
+     "tips": ["Courts and the DMV do not text payment links.", "Look up any ticket on your state's official website.", "Never pay through a link in a message."],
      "flags": {
        "en": ["unpaid traffic ticket", "DMV / police", "license suspended", "pay fine now"],
        "es": ["multa de tránsito sin pagar", "DMV / policía", "licencia suspendida", "pague la multa ahora"],
@@ -81,6 +88,7 @@
        "vi": ["phạt giao thông chưa nộp", "DMV / cảnh sát", "bằng lái bị đình chỉ", "nộp phạt ngay"]}},
     {"id": 7, "category": 4, "position": 2, "slug": "toll-notice", "name": "Bogus toll notice", "sources": "SMS", "basis": "FTC Top Text Scams 2024",
      "summary": "A text impersonating SunPass, E-ZPass or a toll agency says you owe a small unpaid toll and links to a fake payment page.",
+     "tips": ["Do not use the link. Check your balance in your toll agency's real app or website.", "Real toll agencies do not threaten big fees by text.", "Delete the text and report it."],
      "flags": {
        "en": ["unpaid toll", "toll balance", "late fee", "SunPass / E-ZPass"],
        "es": ["peaje sin pagar", "saldo de peaje", "recargo por mora", "SunPass / E-ZPass"],
@@ -89,6 +97,7 @@
        "vi": ["phí cầu đường chưa trả", "số dư phí cầu đường", "phí trả chậm", "SunPass / E-ZPass"]}},
     {"id": 8, "category": 5, "position": 3, "slug": "phony-job-task", "name": "Phony job / task scam", "sources": "SMS,Email", "basis": "FTC Top Text Scams 2024; FTC 2024: business and job opportunity losses $750.6M",
      "summary": "An unsolicited offer of easy work-from-home pay for tasks like rating apps, then you are pressured to send money before you can withdraw your earnings.",
+     "tips": ["A real job never asks you to pay money to get paid.", "Be wary of easy pay for rating apps or doing small tasks.", "Do not move the chat to WhatsApp or Telegram with a stranger."],
      "flags": {
        "en": ["work from home", "no experience needed", "earn $ per day", "WhatsApp / Telegram"],
        "es": ["trabaje desde casa", "sin experiencia", "gane $ al día", "WhatsApp / Telegram"],
@@ -97,6 +106,7 @@
        "vi": ["làm việc tại nhà", "không cần kinh nghiệm", "kiếm $ mỗi ngày", "WhatsApp / Telegram"]}},
     {"id": 9, "category": 3, "position": 1, "slug": "fake-fraud-alert", "name": "Fake fraud alert (bank / Amazon)", "sources": "SMS,Email", "basis": "FTC Top Text Scams 2024",
      "summary": "A message posing as your bank or Amazon reports a suspicious charge and pressures you to reply or call a number to 'secure your funds'.",
+     "tips": ["Do not reply or call the number in the message.", "Call the number on the back of your card instead.", "Your bank will never ask for your PIN or full password."],
      "flags": {
        "en": ["suspicious charge", "reply YES to confirm", "secure your funds", "account at risk"],
        "es": ["cargo sospechoso", "responda SÍ para confirmar", "proteja sus fondos", "cuenta en riesgo"],
@@ -105,6 +115,7 @@
        "vi": ["khoản phí đáng ngờ", "trả lời CÓ để xác nhận", "bảo vệ tiền của bạn", "tài khoản có nguy cơ"]}},
     {"id": 10, "category": 1, "position": 3, "slug": "wrong-number-romance", "name": "Wrong-number / romance-investment scam", "sources": "SMS", "basis": "FTC Top Text Scams 2024",
      "summary": "A stranger 'accidentally' texts you, starts a friendly or romantic conversation, then steers you to a fake investment platform.",
+     "tips": ["You do not owe a stranger a reply. Stop responding.", "Anyone who steers you toward investing is probably scamming you.", "Never send money or crypto to someone you only know from texts."],
      "flags": {
        "en": ["wrong number", "you seem nice", "investment opportunity", "crypto platform"],
        "es": ["número equivocado", "pareces simpático", "oportunidad de inversión", "plataforma de cripto"],
@@ -113,6 +124,7 @@
        "vi": ["nhầm số", "bạn có vẻ dễ mến", "cơ hội đầu tư", "sàn tiền điện tử"]}},
     {"id": 11, "category": 3, "position": 2, "slug": "account-verification-phishing", "name": "Account verification phishing", "sources": "Email,SMS", "basis": "FBI spoofing & phishing category (page could not be read; unverified)",
      "summary": "A message says there was unusual activity or your account is locked and asks you to click a link and log in, which hands your password to the scammer.",
+     "tips": ["Do not click the link. Type the company's web address yourself.", "Real companies do not lock your account over a text and demand a login.", "If you already entered your password, change it and turn on two-step verification."],
      "flags": {
        "en": ["verify your account", "unusual login", "account locked", "click here"],
        "es": ["verifique su cuenta", "inicio de sesión inusual", "cuenta bloqueada", "haga clic aquí"],
@@ -121,6 +133,7 @@
        "vi": ["xác minh tài khoản", "đăng nhập bất thường", "tài khoản bị khóa", "nhấp vào đây"]}},
     {"id": 12, "category": 4, "position": 3, "slug": "spoofed-invoice", "name": "Spoofed invoice / payment request", "sources": "Email", "basis": "FBI spoofing & phishing category (page could not be read; unverified)",
      "summary": "A fake invoice or 'final notice' from a vendor or company asks you to pay, often to a new bank account, by wire transfer.",
+     "tips": ["Check every invoice against your own records before paying.", "Call the company on a number you already trust before changing bank details.", "Be suspicious of 'final notice' pressure."],
      "flags": {
        "en": ["invoice overdue", "final notice", "new bank account", "wire payment"],
        "es": ["factura vencida", "aviso final", "nueva cuenta bancaria", "transferencia bancaria"],
@@ -129,6 +142,7 @@
        "vi": ["hóa đơn quá hạn", "thông báo cuối cùng", "tài khoản ngân hàng mới", "chuyển khoản"]}},
     {"id": 13, "category": 1, "position": 2, "slug": "spear-phishing-known-person", "name": "Impersonating someone you know (spear phishing)", "sources": "Email,SMS", "basis": "FBI spoofing & phishing category (page could not be read; unverified)",
      "summary": "A message that looks like it is from your boss, pastor or friend asks for a quick favor, usually to buy gift cards and send the codes.",
+     "tips": ["Check the sender's real address. It may be one letter off.", "Call the person on their usual number to confirm.", "Never buy gift cards or send codes for a quick favor."],
      "flags": {
        "en": ["are you available?", "quick favor", "buy gift cards", "I'll reimburse you"],
        "es": ["¿está disponible?", "un favor rápido", "compre tarjetas de regalo", "le reembolsaré"],
@@ -137,6 +151,7 @@
        "vi": ["bạn rảnh không", "nhờ một việc", "mua thẻ quà tặng", "tôi sẽ hoàn tiền"]}},
     {"id": 14, "category": 2, "position": 3, "slug": "medicare-health-insurance", "name": "Medicare / health insurance scam", "sources": "SMS,Email", "basis": "General knowledge",
      "summary": "Someone claims you need a new Medicare card or qualify for free medical equipment and asks for your Medicare or Social Security number.",
+     "tips": ["Medicare will not text or call to ask for your number or to sell you equipment.", "Never share your Medicare number with someone who contacted you first.", "If unsure, call 1-800-MEDICARE yourself."],
      "flags": {
        "en": ["new Medicare card", "Medicare number", "free medical equipment", "benefits expire"],
        "es": ["nueva tarjeta de Medicare", "número de Medicare", "equipo médico gratis", "beneficios vencen"],
@@ -145,6 +160,7 @@
        "vi": ["thẻ Medicare mới", "số Medicare", "thiết bị y tế miễn phí", "quyền lợi sắp hết hạn"]}},
     {"id": 15, "category": 3, "position": 3, "slug": "utility-shutoff", "name": "Utility shutoff threat", "sources": "SMS,Email", "basis": "General knowledge",
      "summary": "A message claiming to be your power or water company says service will be cut off within hours unless you pay immediately, often by prepaid card.",
+     "tips": ["Utilities give written notice before shutting off service.", "Hang up and call the number printed on your bill.", "Never pay by prepaid card, gift card or wire."],
      "flags": {
        "en": ["power will be shut off", "past due bill", "pay within an hour", "prepaid card"],
        "es": ["cortarán la luz", "factura vencida", "pague en una hora", "tarjeta prepago"],
@@ -153,6 +169,7 @@
        "vi": ["sẽ bị cắt điện", "hóa đơn quá hạn", "thanh toán trong một giờ", "thẻ trả trước"]}},
     {"id": 16, "category": 3, "position": 4, "slug": "subscription-renewal", "name": "Fake subscription renewal / auto-charge", "sources": "Email,SMS", "basis": "General knowledge",
      "summary": "A message says your antivirus or service subscription was just renewed for a large amount and tells you to call a number to cancel and get a refund.",
+     "tips": ["Check your real bank statement before calling anyone.", "Do not call numbers in the message.", "A real renewal never asks you to allow remote access."],
      "flags": {
        "en": ["auto-renewal", "your subscription was charged", "call to cancel", "Norton / Geek Squad"],
        "es": ["renovación automática", "se cobró su suscripción", "llame para cancelar", "Norton / Geek Squad"],
@@ -161,6 +178,7 @@
        "vi": ["tự động gia hạn", "gói đăng ký đã bị tính phí", "gọi để hủy", "Norton / Geek Squad"]}},
     {"id": 17, "category": 1, "position": 4, "slug": "charity-disaster", "name": "Fake charity / disaster donation", "sources": "SMS,Email", "basis": "General knowledge",
      "summary": "After a disaster or in the holidays, a fake charity pressures you to donate right away, often by gift card, wire or crypto.",
+     "tips": ["Check the charity on its official website or an independent charity checker.", "Never donate by gift card, wire or crypto.", "Do not give in to pressure to donate right now."],
      "flags": {
        "en": ["donate now", "disaster relief", "donate by gift card", "tax-deductible"],
        "es": ["done ahora", "ayuda para damnificados", "done con tarjeta de regalo", "deducible de impuestos"],
@@ -169,6 +187,7 @@
        "vi": ["quyên góp ngay", "cứu trợ thiên tai", "quyên góp bằng thẻ quà tặng", "được khấu trừ thuế"]}},
     {"id": 18, "category": 2, "position": 4, "slug": "student-loan-debt-relief", "name": "Student loan forgiveness / debt relief", "sources": "SMS,Email", "basis": "General knowledge",
      "summary": "An offer to erase your loans or debt for an upfront fee, claiming limited-time government programs.",
+     "tips": ["Federal student loan help is free at studentaid.gov.", "Never pay an upfront fee for forgiveness or debt relief.", "Never share your FSA ID or password with anyone."],
      "flags": {
        "en": ["loan forgiveness", "debt relief", "limited time", "upfront fee"],
        "es": ["condonación de préstamo", "alivio de deuda", "tiempo limitado", "pago por adelantado"],
@@ -177,6 +196,7 @@
        "vi": ["xóa nợ vay", "giảm nợ", "thời gian có hạn", "phí trả trước"]}},
     {"id": 19, "category": 5, "position": 4, "slug": "crypto-investment", "name": "Crypto / investment opportunity", "sources": "SMS,Email", "basis": "FTC 2024: investment scams were the top loss category at $5.7B",
      "summary": "Promises of guaranteed or doubled returns on a trading or crypto platform, which shows fake profits but blocks withdrawals unless you pay more.",
+     "tips": ["No one can guarantee investment returns.", "Be suspicious if you cannot withdraw without paying more fees.", "Never invest on a site a stranger told you about."],
      "flags": {
        "en": ["guaranteed returns", "double your money", "trading platform", "withdrawal fee"],
        "es": ["ganancias garantizadas", "duplique su dinero", "plataforma de inversión", "cargo por retiro"],
@@ -185,6 +205,7 @@
        "vi": ["lợi nhuận đảm bảo", "nhân đôi tiền", "sàn giao dịch", "phí rút tiền"]}},
     {"id": 20, "category": 4, "position": 4, "slug": "payment-app-refund", "name": "Payment app 'sent by mistake' scam", "sources": "SMS,Email", "basis": "General knowledge",
      "summary": "Someone says they sent you money by mistake on Zelle, Venmo or Cash App and asks you to send it back, but their payment is fake or reversed.",
+     "tips": ["Check your bank or payment app directly, not the message.", "A real mistaken payment is reversed by the app, not by you sending money back.", "Do not send money back to a stranger who claims an error."],
      "flags": {
        "en": ["sent you money by mistake", "send it back", "Zelle / Venmo / Cash App", "refund"],
        "es": ["le envié dinero por error", "devuélvalo", "Zelle / Venmo / Cash App", "reembolso"],
