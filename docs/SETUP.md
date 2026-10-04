@@ -22,10 +22,10 @@ This repository is public on purpose, so these things are **not** in it:
 
 Without the logo the app still works and shows a plain "SwivProtect" title.
 
-**The private kit:** ask the project owner for access to the private repository (`SwivProtect-private`). Clone it next to this one and run its installer:
+**The private kit:** ask the project owner for access to the private repository (`SwivProtect-private`). Clone it into a folder called `private` inside this project (this repository ignores that folder, so it can never be pushed here by accident) and run its installer:
 ```
-git clone <private repository address> swivprotect-private
-cd swivprotect-private && ./install.sh ../<this project's folder>
+git clone <private repository address> private
+cd private && ./install.sh
 ```
 
 ## Settings (environment variables)
