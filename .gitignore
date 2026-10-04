@@ -1,0 +1,19 @@
+# local data: accounts, API keys and reports live here, never commit
+data/live.db
+data/live.db-*
+node_modules/
+.DS_Store
+__pycache__/
+.idea/
+.env
+.claude/
+
+# Swivel's registered logo: keep private; add your own copy to public/ locally
+public/swivel-logo.svg
+
+# Android build output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk

@@ -103,7 +103,9 @@ function submitReport(u, scamId, source, outcome) {
 
 // ---- "during attack": scan a message against the catalog's red-flag words ----
 const FLAG_ROWS = q('SELECT scam_id, flag FROM catalog.red_flags').all();
-const SCAMS = Object.fromEntries(q('SELECT id, name, summary FROM catalog.scams').all().map(s => [s.id, s]));
+const TIPS = {};
+for (const t of q('SELECT scam_id, tip FROM catalog.tips ORDER BY scam_id, position').all()) (TIPS[t.scam_id] ??= []).push(t.tip);
+const SCAMS = Object.fromEntries(q('SELECT id, name, summary FROM catalog.scams').all().map(s => [s.id, { ...s, tips: TIPS[s.id] || [] }]));
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // "grandma/grandpa" -> two alternatives; "$" matches any amount; letters at the edges must not sit inside a longer word.
 const FLAG_RE = FLAG_ROWS.map(r => {
@@ -116,12 +118,16 @@ const FLAG_RE = FLAG_ROWS.map(r => {
 const PAYMENT_RE = /gift card|tarjeta de regalo|礼品卡|thẻ quà tặng|wire transfer|bitcoin|crypto|cripto|加密|zelle|cash app|prepaid|prepago/i;
 
 function analyze(text) {
+  // Count each distinct word found in the message once. The same word (e.g. "USPS") appears in several languages'
+  // flag lists and must not be counted once per language.
   const byScam = {};
-  for (const f of FLAG_RE) if (f.re.test(text)) (byScam[f.scamId] ??= []).push(f.flag);
-  let [best, hits] = Object.entries(byScam).sort((a, b) => b[1].length - a[1].length)[0] || [null, []];
+  for (const f of FLAG_RE) { const m = text.match(f.re); if (m) (byScam[f.scamId] ??= new Set()).add(m[0].toLowerCase()); }
+  let [best, found] = Object.entries(byScam).sort((a, b) => b[1].size - a[1].size)[0] || [null, new Set()];
+  const hits = [...found];
   let score = hits.length;
-  if (score && PAYMENT_RE.test(text)) score++;
-  if (score && /https?:\/\//i.test(text)) score++;
+  // Payment-method words and links only add weight when other scam words are already present.
+  if (score >= 2 && PAYMENT_RE.test(text)) score++;
+  if (score >= 2 && /https?:\/\//i.test(text)) score++;
   const level = score >= 3 ? 'high' : score === 2 ? 'medium' : 'low';
   return { level, score, scam: level === 'low' ? null : SCAMS[best], hits: level === 'low' ? [] : hits };
 }

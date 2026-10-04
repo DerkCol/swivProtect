@@ -32,12 +32,25 @@ Optional: `ANTHROPIC_API_KEY=sk-... npm start` adds a plain-language Claude expl
 2. Me tab -> copy your key -> paste into `TOKEN` in `Code.gs`.
 3. script.google.com -> new project -> paste both files (show manifest in settings) -> Deploy -> Test deployment -> Gmail add-on.
 
-## Android SMS automation (MacroDroid / Tasker)
-- Trigger: SMS received, sender NOT in contacts.
-- Action: HTTP POST `https://<your-tunnel>/api/analyze`, header `Authorization: Bearer <key>`,
-  JSON body `{"body":"[sms_message]"}` (no phone numbers are sent or stored).
-- If response `level` is `high` or `medium`: show a notification with `headline`. Nothing is texted to anyone.
-- Permissions needed: receive SMS and read contacts (to skip saved numbers). No send-SMS permission.
+## Android app (android/): the full SwivProtect app
+The Android app shows the same screens as the web app (login, home, alerts, reports, check a message, profile) inside a WebView, so there is one UI to maintain, and adds the phone-only parts through a small bridge:
+- It remembers your login by itself, so the text-message checker needs no copy and paste.
+- After sign-up it asks for the phone permissions (receive SMS, read contacts to skip saved numbers, notifications). No send-SMS permission.
+- Texts from numbers that are NOT in your contacts are checked on the server (only the message text is sent, never the number). A warning notification opens a popup about that scam, with a Report button.
+- Community alerts from the web app arrive as real phone notifications while the app is open.
+- The Android Back button steps back through the app's own screens.
+
+Build and install on the emulator (needs Android Studio's Java; the first build downloads Gradle):
+
+    cd android
+    export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+    ./gradlew assembleDebug
+    ~/Library/Android/sdk/platform-tools/adb reverse tcp:3000 tcp:3000
+    ~/Library/Android/sdk/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+- The server must be running (`npm start`). The app loads `http://localhost:3000` (works on the emulator after `adb reverse`). If the server cannot be reached the app shows a screen to type another address; plain http is only allowed to localhost and 10.0.2.2, anything else must be https.
+- Try it: `adb emu sms send 5551234 "Your package could not be delivered. Pay the redelivery fee at usps-redeliver.top"`. Save 5551234 as a contact and send again to see it ignored.
+- On a real phone, an app installed from a file may need Settings, Apps, SwivProtect, menu, "Allow restricted settings" before the SMS permission can be granted.
 
 ## Running on an Android phone
 It is a web app that installs like an app (manifest + service worker).
@@ -46,3 +59,6 @@ It is a web app that installs like an app (manifest + service worker).
   Chrome menu -> Install app (or Add to Home screen). Allow notifications from the Me tab.
 - **USB alternative:** `brew install android-platform-tools`, `adb reverse tcp:3000 tcp:3000`, open `http://localhost:3000` on the phone.
 - Alerts arrive while the app is open (polled every 10 seconds). Alerts to a closed app need web push (not built yet).
+
+## Brand logo
+`public/swivel-logo.svg` is Swivel's registered logo and is deliberately not in the repo. Copy it into `public/` to see it; without it the app shows a plain "SwivProtect" title.
