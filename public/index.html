@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EEE9F1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<title>SwivProtect</title>
+<style>
+  :root {
+    --bg:#EEE9F1;            /* rgb(238,233,241) */
+    --purple:#500778;        /* Swivel logo purple */
+    --magenta:#bb16a3;       /* Swivel logo magenta */
+    --card:#ffffff; --ink:#24102f; --muted:#5d4d68; --line:#cfc3d8;
+    --danger:#b3261e; --ok:#1e7a46;
+    --safe-top:env(safe-area-inset-top, 0px); --safe-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--bg); -webkit-text-size-adjust:100%; }
+  * { -webkit-tap-highlight-color:rgba(187,22,163,.15); }
+  button, a, select, summary, label { touch-action:manipulation; }
+  body { margin:0; font:18px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+  .screen { display:none; max-width:480px; margin:0 auto; padding:0 20px calc(110px + var(--safe-bottom)); }
+  .screen.on { display:block; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:calc(14px + var(--safe-top)) 0 10px; min-height:60px; }
+  .logo { height:26px; width:auto; display:block; }
+  a.link, button.link { color:var(--magenta); font:inherit; font-weight:600; background:none; border:0; padding:8px 0; width:auto; min-height:48px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+  h1 { color:var(--purple); font-size:32px; line-height:1.15; margin:8px 0 10px; }
+  h2 { color:var(--purple); font-size:22px; margin:26px 0 8px; display:flex; align-items:center; gap:10px; }
+  .lead { color:var(--muted); margin:0 0 18px; }
+  .small { font-size:16px; color:var(--muted); }
+  .brand { color:var(--purple); font-weight:800; letter-spacing:.03em; font-size:17px; margin-top:14px; }
+  .card { background:var(--card); border:1.5px solid var(--line); border-radius:16px; padding:16px; margin:12px 0; }
+  .card.alert { border-left:6px solid var(--magenta); }
+  .card.high { border-color:var(--danger); border-width:2px; }
+  .card.ok { border-color:var(--ok); border-width:2px; }
+  label { display:block; margin:16px 0 6px; font-weight:700; color:var(--purple); }
+  input, select, textarea { font:inherit; width:100%; min-height:52px; padding:12px 14px; border-radius:12px; border:1.5px solid var(--line); background:var(--card); color:var(--ink); }
+  textarea { min-height:140px; }
+  input:focus, select:focus, textarea:focus, button:focus-visible { outline:3px solid var(--magenta); outline-offset:2px; }
+  .hint { font-size:15px; color:var(--muted); margin-top:4px; }
+  .pw { position:relative; } .pw input { padding-right:56px; }
+  .pw button { position:absolute; right:4px; top:4px; width:48px; min-height:48px; background:none; border:0; color:var(--muted); cursor:pointer; margin:0; padding:0; }
+  button.btn { display:block; width:100%; min-height:56px; margin-top:16px; border-radius:14px; font:inherit; font-weight:700; cursor:pointer; padding:12px; background:var(--purple); color:#fff; border:2px solid var(--purple); }
+  button.btn.outline { background:transparent; color:var(--purple); }
+  button.btn.small-btn { min-height:48px; font-size:16px; }
+  .check { display:flex; gap:12px; align-items:flex-start; margin:18px 0 0; font-weight:400; color:var(--ink); }
+  .check input { width:26px; min-height:26px; margin-top:2px; accent-color:var(--purple); flex:none; }
+  .err { color:var(--danger); font-weight:600; min-height:1.4em; margin-top:10px; }
+  .note { display:flex; gap:10px; align-items:flex-start; font-size:15px; color:var(--muted); margin-top:16px; }
+  .note svg { flex:none; margin-top:3px; }
+  .center { text-align:center; }
+  .avatar { width:52px; height:52px; border-radius:50%; background:var(--purple); color:#fff; display:grid; place-items:center; font-weight:800; font-size:22px; flex:none; }
+  .who { display:flex; gap:14px; align-items:center; margin-bottom:10px; }
+  .who strong { font-size:22px; color:var(--purple); }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .chip { display:inline-block; padding:2px 10px; border-radius:99px; font-size:14px; font-weight:700; margin:4px 6px 0 0; white-space:nowrap; }
+  .chip.blocked { background:#dff3e7; color:#14552f; } .chip.fell_for { background:#fbe0de; color:#8a1d17; }
+  .chip.unsure { background:#e5dcec; color:var(--purple); } .chip.alert { background:#f6d9f1; color:#8a0f78; } .chip.new { background:var(--magenta); color:#fff; }
+  .count { background:var(--magenta); color:#fff; border-radius:99px; font-size:14px; padding:0 9px; font-weight:700; }
+  .item { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line); } .item:last-child { border-bottom:0; }
+  .item svg { flex:none; margin-top:3px; color:var(--purple); }
+  .pill { display:inline-block; padding:2px 10px; border-radius:99px; background:#e5dcec; color:var(--purple); font-size:15px; margin:3px 4px 3px 0; }
+  ol { padding-left:24px; } li { margin:8px 0; }
+  nav { position:fixed; left:0; right:0; bottom:0; display:none; background:var(--card); border-top:1.5px solid var(--line); padding-bottom:var(--safe-bottom); }
+  nav .in { display:flex; max-width:480px; margin:0 auto; }
+  nav button { flex:1; background:none; border:0; padding:10px 4px 8px; min-height:64px; font:inherit; font-size:15px; font-weight:600; color:var(--muted); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  nav button.on { color:var(--magenta); } nav button.on::after { content:""; width:28px; height:3px; border-radius:3px; background:var(--magenta); margin-top:2px; }
+  .steps { color:var(--muted); font-size:15px; font-weight:600; margin:0; }
+  .dots { display:flex; gap:6px; margin:6px 0 16px; } .dots i { flex:1; height:5px; border-radius:5px; background:var(--line); } .dots i.on { background:var(--magenta); }
+  button.tile { display:block; width:100%; text-align:left; background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:16px; margin:10px 0; font:inherit; color:var(--ink); cursor:pointer; min-height:64px; }
+  button.tile strong { display:block; color:var(--purple); line-height:1.3; }
+  button.tile span { font-size:16px; line-height:1.35; color:var(--muted); display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:2px; }
+  button.tile.sel { border-color:var(--purple); border-width:2.5px; background:#f6f0fa; }
+  button.btn:disabled { opacity:.45; cursor:not-allowed; }
+  nav.kb { display:none !important; }   /* hide the bottom bar while the on-screen keyboard is open */
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="login" class="screen">
+  <div class="topbar"><img class="logo" src="swivel-logo.svg" alt="Swivel"><span></span></div>
+  <div class="brand">SWIVPROTECT</div>
+  <h1>A safer place<br>to speak up.</h1>
+  <p class="lead">Report a scam, keep track of your reports, and help others stay one step ahead.</p>
+  <h2 style="margin-top:22px">Log in to your account</h2>
+  <label for="lEmail">Email address</label><input id="lEmail" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com">
+  <label for="lPw">Password</label>
+  <div class="pw"><input id="lPw" type="password" autocomplete="current-password" placeholder="Enter your password"><button type="button" data-eye="lPw" aria-label="Show or hide password"></button></div>
+  <div class="err" id="lErr" role="alert"></div>
+  <button class="btn" id="lGo">Log in</button>
+  <p class="center small" style="margin-top:26px">New to SwivProtect?</p>
+  <button class="btn outline" id="toSignup" style="margin-top:6px">Create an account</button>
+  <div class="note"><span data-ico="lock"></span><span>Your information stays private. Must be 18+ years. Your voice can make a difference.</span></div>
+  <p class="center small">SwivProtect by Swivel</p>
+</section>
+
+<!-- ============ SIGN-UP, STEP 1 ============ -->
+<section id="signup1" class="screen">
+  <div class="topbar"><button class="link" data-go="login">‹ Back to login</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <h1>Create your account</h1>
+  <p class="lead">A few details to get started. Your personal information will not appear in public reports.</p>
+  <label for="sName">Full name</label><input id="sName" autocomplete="name" autocapitalize="words" placeholder="Enter your full name">
+  <label for="sEmail">Email address</label><input id="sEmail" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com">
+  <label for="sPw">Password</label>
+  <div class="pw"><input id="sPw" type="password" autocomplete="new-password" placeholder="Create a password"><button type="button" data-eye="sPw" aria-label="Show or hide password"></button></div>
+  <div class="hint">Use at least 8 characters, with a letter and a number.</div>
+  <label for="sPw2">Confirm password</label>
+  <div class="pw"><input id="sPw2" type="password" autocomplete="new-password" placeholder="Re-enter your password"><button type="button" data-eye="sPw2" aria-label="Show or hide password"></button></div>
+  <label class="check"><input type="checkbox" id="sTerms"><span>I agree to the <b>Terms of use</b> and <b>Privacy policy</b>.</span></label>
+  <div class="err" id="s1Err" role="alert"></div>
+  <button class="btn" id="s1Next">Next</button>
+  <p class="center small" style="margin-top:22px">Already registered? <button class="link" data-go="login" style="min-height:0">Log in</button></p>
+</section>
+
+<!-- ============ SIGN-UP, STEP 2 ============ -->
+<section id="signup2" class="screen">
+  <div class="topbar"><button class="link" data-go="signup1">‹ Back</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <h1>About you</h1>
+  <p class="lead">This helps us warn you about scams going around people like you. We never show your name.</p>
+  <label for="sState">State you live in</label><select id="sState" class="stateSel"></select>
+  <label for="sAge">Age range</label><select id="sAge" class="ageSel"></select>
+  <label for="sLang">Preferred language</label><select id="sLang" class="langSel"></select>
+  <div class="err" id="s2Err" role="alert"></div>
+  <button class="btn" id="s2Go">Create account</button>
+</section>
+
+<!-- ============ HOME ============ -->
+<section id="home" class="screen">
+  <div class="topbar"><img class="logo" src="swivel-logo.svg" alt="Swivel"><button class="link" id="logout">Log out</button></div>
+  <h1 id="hello">Hello</h1>
+  <p class="lead">Your profile. Your alerts. Your reports. All in one place.</p>
+
+  <div class="card">
+    <div class="who"><div class="avatar" id="avatar"></div><div><strong id="firstName"></strong><div class="small" id="since"></div></div></div>
+    <div class="small" id="emailLine"></div>
+    <button class="btn outline small-btn" id="editBtn">Edit profile</button>
+  </div>
+
+  <h2>Alerts for you <span class="count hidden" id="unread"></span></h2>
+  <div id="alertList"></div>
+  <button class="btn outline small-btn" id="notifBtn">Turn on phone alerts</button>
+  <p class="small" id="stats"></p>
+
+  <h2>Got a strange message?</h2>
+  <div class="card">
+    <p style="margin:0 0 4px">Paste it in before you click anything. The Gmail add-on and text-message automation do this for you.</p>
+    <button class="btn small-btn" id="toCheck">Check a message</button>
+  </div>
+
+  <button class="btn outline" id="toReport">Report a scam</button>
+  <p class="center small">It only takes a few minutes to help someone else.</p>
+
+  <h2 class="row"><span>Your reports</span><span class="small" id="reportCount" style="font-weight:400"></span></h2>
+  <div class="card" id="myReports"></div>
+
+  <div class="note"><span data-ico="shield"></span><span>Stay safe: never share passwords or verification codes, even with someone you trust.</span></div>
+</section>
+
+<!-- ============ REPORT (4 short steps) ============ -->
+<section id="report" class="screen">
+  <div class="topbar"><button class="link" data-go="home">‹ Home</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <h1>Report a scam</h1>
+  <div id="rStepper"></div>
+</section>
+
+<!-- ============ CHECK A MESSAGE ============ -->
+<section id="check" class="screen">
+  <div class="topbar"><button class="link" data-go="home">‹ Home</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <h1>Check a message</h1>
+  <p class="lead">Paste the text or email below. We compare it with scams reported to SwivProtect.</p>
+  <label for="subj">Subject (optional)</label><input id="subj">
+  <label for="body">Message</label><textarea id="body"></textarea>
+  <button class="btn" id="analyze">Check it</button>
+  <div id="result"></div>
+</section>
+
+<!-- ============ EDIT PROFILE ============ -->
+<section id="edit" class="screen">
+  <div class="topbar"><button class="link" data-go="home">‹ Home</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <h1>Edit profile</h1>
+  <p class="lead" id="editWho"></p>
+  <label for="eState">State</label><select id="eState" class="stateSel"></select>
+  <label for="eAge">Age range</label><select id="eAge" class="ageSel"></select>
+  <label for="eLang">Preferred language</label><select id="eLang" class="langSel"></select>
+  <div class="err" id="eErr" role="alert"></div>
+  <button class="btn" id="saveProfile">Save</button>
+  <div class="card" style="margin-top:28px">
+    <strong style="color:var(--purple)">Connect your devices</strong>
+    <p class="small" style="margin:6px 0">Paste this key into the Gmail add-on and the text-message automation so they know who you are. Keep it private.</p>
+    <input id="tokenBox" readonly onclick="this.select()">
+  </div>
+</section>
+
+<nav id="nav"><div class="in">
+  <button data-go="home"><span data-ico="home"></span>Home &amp; profile</button>
+  <button data-go="report"><span data-ico="flag"></span>Report a scam</button>
+</div></nav>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const opts = a => a.map(v => `<option>${esc(v)}</option>`).join('');
+const svg = d => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICO = {
+  eye: svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
+  lock: svg('<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>'),
+  shield: svg('<path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/>'),
+  doc: svg('<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>'),
+  home: svg('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>'),
+  flag: svg('<path d="M5 22V3M5 4h12l-2 4 2 4H5"/>'),
+};
+document.querySelectorAll('[data-ico]').forEach(e => e.innerHTML = ICO[e.dataset.ico]);
+document.querySelectorAll('[data-eye]').forEach(b => { b.innerHTML = ICO.eye; b.onclick = () => { const i = $(b.dataset.eye); i.type = i.type === 'password' ? 'text' : 'password'; }; });
+
+let me = JSON.parse(localStorage.getItem('swivel-me') || 'null');
+let cats = [], scams = [], draft = null;
+const seenKey = () => 'swivel-seen-' + (me ? me.email : '');
+let seen = new Set(), firstLoad = true;
+
+async function api(path, method = 'GET', body) {
+  const r = await fetch(path, { method, headers: { 'content-type': 'application/json', ...(me ? { authorization: 'Bearer ' + me.token } : {}) }, body: body && JSON.stringify(body) });
+  const j = await r.json();
+  if (r.status === 401 && me && path !== '/api/login') signOut();
+  if (!r.ok) throw new Error(j.error || 'Something went wrong');
+  return j;
+}
+function setMe(u) { me = u; localStorage.setItem('swivel-me', JSON.stringify(u)); seen = new Set(JSON.parse(localStorage.getItem(seenKey()) || '[]')); firstLoad = true; }
+function signOut() { me = null; localStorage.removeItem('swivel-me'); show('login', 'replace'); }
+
+// ---------- navigation
+const AUTH = ['login', 'signup1', 'signup2'];
+function show(id, mode = 'push') {   // mode: push | replace | pop (history handling for the Android Back button)
+  if (!AUTH.includes(id) && !me) id = 'login';
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+  $('nav').style.display = AUTH.includes(id) ? 'none' : 'block';
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.go === (id === 'report' ? 'report' : 'home')));
+  document.querySelectorAll('.err').forEach(e => e.textContent = '');
+  window.scrollTo(0, 0);
+  if (id === 'home') loadHome().catch(() => {});
+  if (id === 'edit') fillEdit();
+  if (id === 'report') reportReset();
+  if (mode === 'push') history.pushState({ id }, ''); else if (mode === 'replace') history.replaceState({ id }, '');
+}
+window.addEventListener('popstate', e => {
+  const st = e.state;
+  if (!st) return;
+  show(st.id, 'pop');
+  if (st.id === 'report' && st.rs) { rs = st.rs; renderReport(); }
+});
+
+// keyboard: hide the bottom bar while typing
+document.addEventListener('focusin', e => { if (e.target.matches('input, textarea, select')) $('nav').classList.add('kb'); });
+document.addEventListener('focusout', () => $('nav').classList.remove('kb'));
+document.addEventListener('click', e => { const t = e.target.closest('[data-go]'); if (t) show(t.dataset.go); });
+$('toSignup').onclick = () => show('signup1');
+$('toCheck').onclick = () => show('check');
+$('toReport').onclick = () => show('report');
+$('editBtn').onclick = () => show('edit');
+$('logout').onclick = signOut;
+
+// ---------- login / sign-up (2 steps)
+$('lGo').onclick = async () => {
+  try { setMe(await api('/api/login', 'POST', { email: $('lEmail').value, password: $('lPw').value })); show('home', 'replace'); }
+  catch (e) { $('lErr').textContent = e.message; }
+};
+$('s1Next').onclick = () => {
+  const pw = $('sPw').value;
+  if (!$('sName').value.trim()) return $('s1Err').textContent = 'Please enter your full name.';
+  if (!/^\S+@\S+\.\S+$/.test($('sEmail').value.trim())) return $('s1Err').textContent = 'Please enter a valid email address.';
+  if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return $('s1Err').textContent = 'Use at least 8 characters, with a letter and a number.';
+  if (pw !== $('sPw2').value) return $('s1Err').textContent = 'The two passwords do not match.';
+  if (!$('sTerms').checked) return $('s1Err').textContent = 'Please agree to the Terms of use and Privacy policy.';
+  draft = { fullName: $('sName').value, email: $('sEmail').value, password: pw };
+  show('signup2');
+};
+$('s2Go').onclick = async () => {
+  try {
+    setMe(await api('/api/signup', 'POST', { ...draft, state: $('sState').value, ageGroup: $('sAge').value, language: $('sLang').value }));
+    draft = null; ['sName', 'sEmail', 'sPw', 'sPw2'].forEach(i => $(i).value = ''); $('sTerms').checked = false;
+    show('home', 'replace');
+  } catch (e) { $('s2Err').textContent = e.message; }
+};
+
+// ---------- home
+const fmtDate = s => new Date(s.replace(' ', 'T') + 'Z');
+const OUTCOME = { blocked: 'Stopped it', fell_for: 'Lost money', unsure: 'Not sure' };
+async function loadHome() {
+  $('hello').textContent = `Hello, ${me.firstName}`;
+  $('firstName').textContent = me.firstName;
+  $('avatar').textContent = me.firstName.charAt(0).toUpperCase();
+  $('since').textContent = 'Member since ' + fmtDate(me.memberSince).toLocaleDateString([], { month: 'long', year: 'numeric' });
+  $('emailLine').textContent = me.email;
+  await Promise.all([loadAlerts(), loadMyReports()]);
+}
+async function loadAlerts() {
+  if (!me) return;
+  const [{ notifications }, st] = await Promise.all([api('/api/notifications'), api('/api/stats')]);
+  const fresh = new Set(notifications.filter(n => !seen.has(n.id)).map(n => n.id));
+  if (!firstLoad && 'Notification' in window && Notification.permission === 'granted')
+    notifications.filter(n => fresh.has(n.id)).forEach(notify);
+  if ($('home').classList.contains('on')) {
+    $('alertList').innerHTML = notifications.length ? notifications.map(n => `
+      <div class="card alert"><div class="row"><strong>${esc(n.scam)}</strong>${fresh.has(n.id) && !firstLoad ? '<span class="chip new">New</span>' : ''}</div>
+      <div class="small">${fmtDate(n.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div><p style="margin:8px 0 0">${esc(n.message)}</p></div>`).join('')
+      : '<div class="card small" style="margin:0">No scam waves reported for people like you right now. We will show alerts here as soon as there is one.</div>';
+    $('unread').textContent = fresh.size; $('unread').classList.toggle('hidden', !fresh.size || firstLoad);
+    notifications.forEach(n => seen.add(n.id));
+    localStorage.setItem(seenKey(), JSON.stringify([...seen]));
+    $('stats').textContent = `Past 30 days: ${st.reports} scam reports, ${st.blocked} people stopped one, ${st.alerts} alerts sent.`;
+  }
+  firstLoad = false;
+}
+async function loadMyReports() {
+  const { reports } = await api('/api/my-reports');
+  $('reportCount').textContent = `${reports.length} in the last 30 days`;
+  $('myReports').innerHTML = reports.length ? reports.map(r => `
+    <div class="item">${ICO.doc}<div><strong>${esc(r.scam)}</strong>
+      <div class="small">${fmtDate(r.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })} · #SR-${String(r.id).padStart(4, '0')} · ${r.source === 'SMS' ? 'Text message' : 'Email'}</div>
+      <span class="chip ${r.outcome}">${OUTCOME[r.outcome]}</span>${r.started_alert ? '<span class="chip alert">Started an alert</span>' : ''}</div></div>`).join('')
+    : '<p class="small" style="margin:0">You have not reported anything yet. Reports you send will show up here.</p>';
+}
+let swReg = null;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r => swReg = r).catch(() => {});
+function notify(n) {   // Android Chrome only allows notifications through the service worker
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const o = { body: n.message, icon: '/icon-192.png', badge: '/icon-192.png', tag: 'alert-' + n.id };
+  if (swReg) swReg.showNotification('SwivProtect', o); else { try { new Notification('SwivProtect', o); } catch {} }
+}
+$('notifBtn').onclick = async () => { const p = await Notification.requestPermission(); $('notifBtn').textContent = p === 'granted' ? 'Phone alerts are on' : 'Alerts are blocked in browser settings'; };
+setInterval(() => me && loadAlerts().catch(() => {}), 10000);
+
+// ---------- edit profile
+function fillEdit() {
+  $('editWho').textContent = `${me.firstName} · ${me.email}`;
+  $('eState').value = me.profile.state; $('eAge').value = me.profile.ageGroup; $('eLang').value = me.profile.language;
+  $('tokenBox').value = me.token;
+}
+$('saveProfile').onclick = async () => {
+  try { setMe({ ...(await api('/api/me', 'PUT', { state: $('eState').value, ageGroup: $('eAge').value, language: $('eLang').value })) }); history.back(); }
+  catch (e) { $('eErr').textContent = e.message; }
+};
+
+// ---------- check a message (during an attack)
+$('analyze').onclick = async () => {
+  const r = await api('/api/analyze', 'POST', { subject: $('subj').value, body: $('body').value });
+  $('result').innerHTML = `<div class="card ${r.level === 'low' ? 'ok' : 'high'}"><h2 style="margin-top:0">${esc(r.headline)}</h2>
+    ${r.scam ? `<p>Looks like: <strong>${esc(r.scam.name)}</strong></p><p class="small">${esc(r.scam.summary)}</p>` : ''}
+    ${r.ai ? `<p>${esc(r.ai)}</p>` : ''}
+    ${r.hits.length ? '<p class="small">Warning signs: ' + r.hits.map(h => `<span class="pill">${esc(h)}</span>`).join('') + '</p>' : ''}
+    ${r.community ? `<p class="small">${r.community} people like you reported this scam in the past month.</p>` : ''}
+    ${r.recovery ? '<p class="small"><b>If you already clicked or paid:</b></p><ol class="small">' + r.recovery.map(s => `<li>${esc(s)}</li>`).join('') + '</ol>' : ''}
+    <p class="small">When in doubt, hang up, delete, and call someone you trust.</p></div>`;
+};
+
+// ---------- report a scam (after an attack): 4 short steps, never more than 5 choices on screen
+let rs;
+const SOURCES = [['SMS', 'Text message', 'It came to my phone as a text.'], ['Email', 'Email', 'It came to my inbox.']];
+const OUTCOMES = [['blocked', 'No, I stopped it', 'I spotted it in time.'], ['fell_for', 'Yes, I lost money or information', 'I paid or shared something.'], ['unsure', "I'm not sure", '']];
+const tile = (v, title, sub, sel) => `<button class="tile${sel ? ' sel' : ''}" data-v="${esc(v)}"><strong>${esc(title)}</strong>${sub ? `<span>${esc(sub)}</span>` : ''}</button>`;
+function reportReset() { rs = { step: 1, cat: null, scam: null, source: null, outcome: null }; renderReport(); }
+function renderReport() {
+  const copy = {
+    1: ['What kind of message was it?', 'Pick the one that fits best.'],
+    2: ['Which one sounds most like it?', cats.find(c => c.id == rs.cat)?.name],
+    3: ['How did it reach you?', ''],
+    4: ['Did you lose money?', 'This helps us know who to warn, and how.'] }[rs.step];
+  const body = rs.step === 1 ? cats.map(c => tile(c.id, c.name, '')).join('')
+    : rs.step === 2 ? scams.filter(x => x.category_id == rs.cat).map(x => tile(x.id, x.name, x.summary)).join('')
+    : rs.step === 3 ? SOURCES.map(([v, t, d]) => tile(v, t, d)).join('')
+    : OUTCOMES.map(([v, t, d]) => tile(v, t, d, rs.outcome === v)).join('') + '<button class="btn" id="rSubmit"' + (rs.outcome ? '' : ' disabled') + '>Submit report</button>';
+  $('rStepper').innerHTML = `${rs.step > 1 ? '<button class="link" id="rBack" style="margin-top:-8px">‹ Back</button>' : ''}
+    <p class="steps">Step ${rs.step} of 4</p><div class="dots">${[1, 2, 3, 4].map(i => `<i class="${i <= rs.step ? 'on' : ''}"></i>`).join('')}</div>
+    <h2 style="margin-top:0">${esc(copy[0])}</h2>${copy[1] ? `<p class="lead" style="margin-bottom:8px">${esc(copy[1])}</p>` : ''}${body}
+    <div class="note"><span data-ico="lock"></span><span>Your name is never shared. Reports only help warn people like you.</span></div><div class="err" id="rErr" role="alert"></div>`;
+  $('rStepper').querySelectorAll('[data-ico]').forEach(e => e.innerHTML = ICO[e.dataset.ico]);
+  window.scrollTo(0, 0);
+}
+$('rStepper').addEventListener('click', async e => {
+  if (e.target.closest('#rBack')) return history.back();
+  const t = e.target.closest('.tile');
+  if (t) {
+    const v = t.dataset.v;
+    if (rs.step === 1) { rs.cat = v; rs.step = 2; }
+    else if (rs.step === 2) { rs.scam = v; rs.step = 3; }
+    else if (rs.step === 3) { rs.source = v; rs.step = 4; }
+    else { rs.outcome = v; return renderReport(); }
+    history.pushState({ id: 'report', rs: { ...rs } }, '');
+    return renderReport();
+  }
+  if (e.target.closest('#rSubmit') && rs.outcome) {
+    try {
+      const r = await api('/api/reports', 'POST', { scamId: rs.scam, source: rs.source, outcome: rs.outcome });
+      const note = r.stored ? (r.alerts ? `<p><b>Your report started ${r.alerts} alert(s)</b> to people like you.</p>` : '')
+        : r.reason === 'duplicate' ? '<p>You already reported this scam. Thank you.</p>' : '<p>We already have plenty of reports like this one. Thank you.</p>';
+      $('rStepper').innerHTML = (r.recovery
+        ? `<div class="card high"><h2 style="margin-top:0">We're sorry. It is not your fault.</h2><p>Please do these now:</p><ol>${r.recovery.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${note}</div>`
+        : r.stored ? `<div class="card ok"><h2 style="margin-top:0">Thank you!</h2><p>Your report helps warn people like you.</p>${note}</div>`
+        : `<div class="card ok"><h2 style="margin-top:0">Already counted</h2>${note}</div>`) + '<button class="btn" data-go="home">Back to home</button>';
+    } catch (err) { $('rErr').textContent = err.message; }
+  }
+});
+
+// ---------- start
+(async () => {
+  const o = await api('/api/options');
+  document.querySelectorAll('.stateSel').forEach(e => e.innerHTML = '<option value="">Select your state</option>' + opts(o.states));
+  document.querySelectorAll('.ageSel').forEach(e => e.innerHTML = '<option value="">Select your age range</option>' + opts(o.ageGroups));
+  document.querySelectorAll('.langSel').forEach(e => e.innerHTML = opts(o.languages));
+  ({ categories: cats, scams } = await api('/api/catalog'));
+  if (me && !(me.firstName && me.memberSince)) { me = null; localStorage.removeItem('swivel-me'); }   // saved login from an older version
+  if (me) seen = new Set(JSON.parse(localStorage.getItem(seenKey()) || '[]'));
+  show(me ? 'home' : 'login', 'replace');
+})();
+</script>
+</body>
+</html>

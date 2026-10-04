@@ -1,0 +1,11 @@
+{
+  "name": "swivel",
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "setup": "python3 data/build_catalog.py",
+    "start": "node server.js",
+    "demo": "node demo-seed.js",
+    "reset": "rm -f data/live.db"
+  }
+}
