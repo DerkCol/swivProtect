@@ -83,7 +83,7 @@
 
 <!-- ============ LOGIN ============ -->
 <section id="login" class="screen">
-  <div class="topbar"><img class="logo" src="swivel-logo.svg" alt="Swivel"><span></span></div>
+  <div class="topbar"><img class="logo" src="swivel-logo.svg" alt="Swivel" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'brand',style:'margin:0',textContent:'SwivProtect'}))"><span></span></div>
   <div class="brand">SWIVPROTECT</div>
   <h1>A safer place<br>to speak up.</h1>
   <p class="lead">Report a scam, keep track of your reports, and help others stay one step ahead.</p>
@@ -101,7 +101,7 @@
 
 <!-- ============ SIGN-UP, STEP 1 ============ -->
 <section id="signup1" class="screen">
-  <div class="topbar"><button class="link" data-go="login">‹ Back to login</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <div class="topbar"><button class="link" data-go="login">‹ Back to login</button><img class="logo" src="swivel-logo.svg" alt="Swivel" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'brand',style:'margin:0',textContent:'SwivProtect'}))"></div>
   <h1>Create your account</h1>
   <p class="lead">A few details to get started. Your personal information will not appear in public reports.</p>
   <label for="sName">Full name</label><input id="sName" autocomplete="name" autocapitalize="words" placeholder="Enter your full name">
@@ -119,7 +119,7 @@
 
 <!-- ============ SIGN-UP, STEP 2 ============ -->
 <section id="signup2" class="screen">
-  <div class="topbar"><button class="link" data-go="signup1">‹ Back</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <div class="topbar"><button class="link" data-go="signup1">‹ Back</button><img class="logo" src="swivel-logo.svg" alt="Swivel" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'brand',style:'margin:0',textContent:'SwivProtect'}))"></div>
   <h1>About you</h1>
   <p class="lead">This helps us warn you about scams going around people like you. We never show your name.</p>
   <label for="sState">State you live in</label><select id="sState" class="stateSel"></select>
@@ -131,7 +131,7 @@
 
 <!-- ============ HOME ============ -->
 <section id="home" class="screen">
-  <div class="topbar"><img class="logo" src="swivel-logo.svg" alt="Swivel"><button class="link" id="logout">Log out</button></div>
+  <div class="topbar"><img class="logo" src="swivel-logo.svg" alt="Swivel" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'brand',style:'margin:0',textContent:'SwivProtect'}))"><button class="link" id="logout">Log out</button></div>
   <h1 id="hello">Hello</h1>
   <p class="lead">Your profile. Your alerts. Your reports. All in one place.</p>
 
@@ -146,9 +146,17 @@
   <button class="btn outline small-btn" id="notifBtn">Turn on phone alerts</button>
   <p class="small" id="stats"></p>
 
+  <div id="nativeCard" class="hidden">
+    <h2>Text-message protection</h2>
+    <div class="card">
+      <p id="nativeStatus" style="margin:0"></p>
+      <button class="btn small-btn" id="nativeBtn">Turn on text protection</button>
+    </div>
+  </div>
+
   <h2>Got a strange message?</h2>
   <div class="card">
-    <p style="margin:0 0 4px">Paste it in before you click anything. The Gmail add-on and text-message automation do this for you.</p>
+    <p style="margin:0 0 4px">Paste it in before you click anything and we will compare it with known scams.</p>
     <button class="btn small-btn" id="toCheck">Check a message</button>
   </div>
 
@@ -163,14 +171,14 @@
 
 <!-- ============ REPORT (4 short steps) ============ -->
 <section id="report" class="screen">
-  <div class="topbar"><button class="link" data-go="home">‹ Home</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <div class="topbar"><button class="link" data-go="home">‹ Home</button><img class="logo" src="swivel-logo.svg" alt="Swivel" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'brand',style:'margin:0',textContent:'SwivProtect'}))"></div>
   <h1>Report a scam</h1>
   <div id="rStepper"></div>
 </section>
 
 <!-- ============ CHECK A MESSAGE ============ -->
 <section id="check" class="screen">
-  <div class="topbar"><button class="link" data-go="home">‹ Home</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <div class="topbar"><button class="link" data-go="home">‹ Home</button><img class="logo" src="swivel-logo.svg" alt="Swivel" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'brand',style:'margin:0',textContent:'SwivProtect'}))"></div>
   <h1>Check a message</h1>
   <p class="lead">Paste the text or email below. We compare it with scams reported to SwivProtect.</p>
   <label for="subj">Subject (optional)</label><input id="subj">
@@ -181,7 +189,7 @@
 
 <!-- ============ EDIT PROFILE ============ -->
 <section id="edit" class="screen">
-  <div class="topbar"><button class="link" data-go="home">‹ Home</button><img class="logo" src="swivel-logo.svg" alt="Swivel"></div>
+  <div class="topbar"><button class="link" data-go="home">‹ Home</button><img class="logo" src="swivel-logo.svg" alt="Swivel" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'brand',style:'margin:0',textContent:'SwivProtect'}))"></div>
   <h1>Edit profile</h1>
   <p class="lead" id="editWho"></p>
   <label for="eState">State</label><select id="eState" class="stateSel"></select>
@@ -217,6 +225,7 @@ const ICO = {
 document.querySelectorAll('[data-ico]').forEach(e => e.innerHTML = ICO[e.dataset.ico]);
 document.querySelectorAll('[data-eye]').forEach(b => { b.innerHTML = ICO.eye; b.onclick = () => { const i = $(b.dataset.eye); i.type = i.type === 'password' ? 'text' : 'password'; }; });
 
+const native = window.SwivNative;   // present only inside the SwivProtect Android app
 let me = JSON.parse(localStorage.getItem('swivel-me') || 'null');
 let cats = [], scams = [], draft = null;
 const seenKey = () => 'swivel-seen-' + (me ? me.email : '');
@@ -229,8 +238,8 @@ async function api(path, method = 'GET', body) {
   if (!r.ok) throw new Error(j.error || 'Something went wrong');
   return j;
 }
-function setMe(u) { me = u; localStorage.setItem('swivel-me', JSON.stringify(u)); seen = new Set(JSON.parse(localStorage.getItem(seenKey()) || '[]')); firstLoad = true; }
-function signOut() { me = null; localStorage.removeItem('swivel-me'); show('login', 'replace'); }
+function setMe(u) { me = u; native?.saveSession(u.token); localStorage.setItem('swivel-me', JSON.stringify(u)); seen = new Set(JSON.parse(localStorage.getItem(seenKey()) || '[]')); firstLoad = true; }
+function signOut() { me = null; native?.clearSession(); localStorage.removeItem('swivel-me'); show('login', 'replace'); }
 
 // ---------- navigation
 const AUTH = ['login', 'signup1', 'signup2'];
@@ -253,6 +262,14 @@ window.addEventListener('popstate', e => {
   if (st.id === 'report' && st.rs) { rs = st.rs; renderReport(); }
 });
 
+// Android app Back button: step back inside the app, and only leave from Home or Login
+window.nativeBack = () => {
+  const id = document.querySelector('.screen.on').id;
+  if (id === 'home' || id === 'login') return false;
+  history.back();
+  return true;
+};
+
 // keyboard: hide the bottom bar while typing
 document.addEventListener('focusin', e => { if (e.target.matches('input, textarea, select')) $('nav').classList.add('kb'); });
 document.addEventListener('focusout', () => $('nav').classList.remove('kb'));
@@ -265,7 +282,7 @@ $('logout').onclick = signOut;
 
 // ---------- login / sign-up (2 steps)
 $('lGo').onclick = async () => {
-  try { setMe(await api('/api/login', 'POST', { email: $('lEmail').value, password: $('lPw').value })); show('home', 'replace'); }
+  try { setMe(await api('/api/login', 'POST', { email: $('lEmail').value, password: $('lPw').value })); show('home', 'replace'); askNativeOnce(); }
   catch (e) { $('lErr').textContent = e.message; }
 };
 $('s1Next').onclick = () => {
@@ -282,9 +299,25 @@ $('s2Go').onclick = async () => {
   try {
     setMe(await api('/api/signup', 'POST', { ...draft, state: $('sState').value, ageGroup: $('sAge').value, language: $('sLang').value }));
     draft = null; ['sName', 'sEmail', 'sPw', 'sPw2'].forEach(i => $(i).value = ''); $('sTerms').checked = false;
-    show('home', 'replace');
+    show('home', 'replace'); askNativeOnce();
   } catch (e) { $('s2Err').textContent = e.message; }
 };
+
+// ---------- text-message protection (Android app only)
+function askNativeOnce() { if (native && !localStorage.getItem('swiv-perm-asked')) { localStorage.setItem('swiv-perm-asked', '1'); native.requestPermissions(); } }
+function renderNative() {
+  $('nativeCard').classList.toggle('hidden', !native);
+  $('notifBtn').classList.toggle('hidden', !!native);   // the app posts real phone notifications itself
+  if (!native) return;
+  const p = JSON.parse(native.permissionStatus());
+  const on = p.sms && p.contacts && p.notifications;
+  $('nativeStatus').textContent = on
+    ? 'On. Texts from numbers that are not in your contacts are checked, and you get a warning if one looks like a scam. Saved contacts are never checked.'
+    : 'Off. Turn this on to check texts from unknown numbers. Texts from saved contacts are never checked or sent anywhere.';
+  $('nativeBtn').classList.toggle('hidden', on);
+}
+$('nativeBtn').onclick = () => native.requestPermissions();
+window.onNativePermissions = renderNative;
 
 // ---------- home
 const fmtDate = s => new Date(s.replace(' ', 'T') + 'Z');
@@ -295,13 +328,14 @@ async function loadHome() {
   $('avatar').textContent = me.firstName.charAt(0).toUpperCase();
   $('since').textContent = 'Member since ' + fmtDate(me.memberSince).toLocaleDateString([], { month: 'long', year: 'numeric' });
   $('emailLine').textContent = me.email;
+  renderNative();
   await Promise.all([loadAlerts(), loadMyReports()]);
 }
 async function loadAlerts() {
   if (!me) return;
   const [{ notifications }, st] = await Promise.all([api('/api/notifications'), api('/api/stats')]);
   const fresh = new Set(notifications.filter(n => !seen.has(n.id)).map(n => n.id));
-  if (!firstLoad && 'Notification' in window && Notification.permission === 'granted')
+  if (!firstLoad && (native || ('Notification' in window && Notification.permission === 'granted')))
     notifications.filter(n => fresh.has(n.id)).forEach(notify);
   if ($('home').classList.contains('on')) {
     $('alertList').innerHTML = notifications.length ? notifications.map(n => `
@@ -327,6 +361,7 @@ async function loadMyReports() {
 let swReg = null;
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r => swReg = r).catch(() => {});
 function notify(n) {   // Android Chrome only allows notifications through the service worker
+  if (native) { native.notify('alert-' + n.id, 'SwivProtect', n.message); return; }
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const o = { body: n.message, icon: '/icon-192.png', badge: '/icon-192.png', tag: 'alert-' + n.id };
   if (swReg) swReg.showNotification('SwivProtect', o); else { try { new Notification('SwivProtect', o); } catch {} }
@@ -349,7 +384,7 @@ $('saveProfile').onclick = async () => {
 $('analyze').onclick = async () => {
   const r = await api('/api/analyze', 'POST', { subject: $('subj').value, body: $('body').value });
   $('result').innerHTML = `<div class="card ${r.level === 'low' ? 'ok' : 'high'}"><h2 style="margin-top:0">${esc(r.headline)}</h2>
-    ${r.scam ? `<p>Looks like: <strong>${esc(r.scam.name)}</strong></p><p class="small">${esc(r.scam.summary)}</p>` : ''}
+    ${r.scam ? `<p>Looks like: <strong>${esc(r.scam.name)}</strong></p><p class="small">${esc(r.scam.summary)}</p><p class="small"><b>What to do:</b></p><ul class="small">${r.scam.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
     ${r.ai ? `<p>${esc(r.ai)}</p>` : ''}
     ${r.hits.length ? '<p class="small">Warning signs: ' + r.hits.map(h => `<span class="pill">${esc(h)}</span>`).join('') + '</p>' : ''}
     ${r.community ? `<p class="small">${r.community} people like you reported this scam in the past month.</p>` : ''}
@@ -413,7 +448,7 @@ $('rStepper').addEventListener('click', async e => {
   document.querySelectorAll('.langSel').forEach(e => e.innerHTML = opts(o.languages));
   ({ categories: cats, scams } = await api('/api/catalog'));
   if (me && !(me.firstName && me.memberSince)) { me = null; localStorage.removeItem('swivel-me'); }   // saved login from an older version
-  if (me) seen = new Set(JSON.parse(localStorage.getItem(seenKey()) || '[]'));
+  if (me) { seen = new Set(JSON.parse(localStorage.getItem(seenKey()) || '[]')); native?.saveSession(me.token); }
   show(me ? 'home' : 'login', 'replace');
 })();
 </script>
