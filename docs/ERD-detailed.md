@@ -1,6 +1,6 @@
 # SwivProtect: detailed entity relationship diagram
 
-Same structure as [ERD.md](ERD.md), but every column carries a plain-English description.
+Every column carries a plain-English description.
 
 Two SQLite files, joined by the server on one connection:
 

@@ -43,7 +43,7 @@ public/
   swivel-logo.svg         Swivel's registered logo. DELIBERATELY NOT IN GIT. App falls back to a text title if missing.
 android/                  Kotlin Android app (see section 6). Gradle wrapper included.
 gmail-addon/              Apps Script (Code.gs, appsscript.json). Written, never deployed or tested.
-docs/                     ERD.md, ERD-detailed.md (Mermaid), this file.
+docs/                     ERD-detailed.md (Mermaid ERD with column descriptions), this file.
 README.md                 Run instructions.
 ```
 
@@ -59,7 +59,7 @@ Node 24 (built-in `node:sqlite` prints an "experimental" warning, harmless). Pyt
 
 ## 5. Data and API
 
-Two SQLite files, both attached on one connection in server.js. See `docs/ERD.md` and `docs/ERD-detailed.md`.
+Two SQLite files, both attached on one connection in server.js. See `docs/ERD-detailed.md`.
 
 - `live.db`: `users` (name stored as "Last, First", email, scrypt password hash, `token`, state, age_group, language), `reports`
   (user_id, scam_id, source Email/SMS, outcome blocked/fell_for/unsure, copied state/age/language, started_alert), `alerts`, `notifications`.
