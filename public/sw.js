@@ -1,7 +1,7 @@
 // Minimal service worker: lets Android install the app, shows notifications, and keeps the app shell available offline.
 // API calls are never cached (alerts and reports must be live).
 const CACHE = 'swivprotect-shell-v1';
-const SHELL = ['/', '/swivel-logo.svg', '/icon-192.png', '/manifest.webmanifest'];
+const SHELL = ['/', '/icon-192.png', '/manifest.webmanifest'];   // logo is cached on first use (it is not in the public repo)
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
