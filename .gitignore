@@ -17,3 +17,13 @@ android/build/
 android/app/build/
 android/local.properties
 *.apk
+.tools/
+
+# anything that could hold a secret or private asset must never be committed
+.env.*
+*.pem
+*.keystore
+*.jks
+session-export*
+private/
+.github/modernize/

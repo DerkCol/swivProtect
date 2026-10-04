@@ -5,10 +5,67 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { RECOVERY } from './recovery.js';
+import { createGoogleVerifier, GoogleAuthError, GoogleUnavailableError } from './googleAuth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA = path.join(__dirname, 'data');
+const DATA = process.env.SWIVEL_DATA_DIR || path.join(__dirname, 'data');
 const PORT = process.env.PORT || 3000;
+
+// Gmail add-on sign-in (off unless GOOGLE_AUDIENCE is set). The value is the OAuth client ID(s) the add-on's Google sign-in token is
+// issued to; several can be given, separated by commas. GOOGLE_JWKS_URL and LINK_CODE_TTL_SECONDS exist for tests.
+const google = createGoogleVerifier({
+  audiences: (process.env.GOOGLE_AUDIENCE || '').split(',').map(x => x.trim()).filter(Boolean),
+  jwksUrl: process.env.GOOGLE_JWKS_URL || undefined,
+});
+const LINK_CODE_TTL_MS = (Number(process.env.LINK_CODE_TTL_SECONDS) || 600) * 1000;
+
+// ---- abuse protection ----
+// Limits are counted in memory (they reset when the server restarts). Change one with RATE_LIMITS='{"signupIp":5}', switch them all off with
+// RATE_LIMITS=off (development only). Behind a proxy or tunnel that sets X-Forwarded-For, start with TRUST_PROXY=1 so people are told apart
+// by their real address; without it everyone behind the proxy looks like one address and shares one allowance.
+const MIN = 60_000, HOUR = 3_600_000;
+const MAX_BODY_BYTES = Number(process.env.MAX_BODY_BYTES) || 100_000;
+const TRUST_PROXY = process.env.TRUST_PROXY === '1';
+const RATE_OFF = process.env.RATE_LIMITS === 'off';
+const LIMITS = {                                          // name: [most requests, per window]
+  signupIp: [60, HOUR], signupAll: [600, HOUR],           // new accounts. The overall cap also bounds how fast the user table can grow.
+  loginIp: [100, 10 * MIN], loginFail: [10, 15 * MIN],    // loginFail counts wrong passwords per account, then locks it for the window
+  analyzeUser: [60, MIN], analyzeIp: [300, MIN],          // scam checks
+  reportUser: [30, HOUR], linkCodeUser: [10, HOUR],
+  readUser: [120, MIN], readIp: [1200, MIN],              // everything else. The app itself uses about 15 requests a minute.
+};
+if (!RATE_OFF && process.env.RATE_LIMITS) {
+  try { for (const [k, v] of Object.entries(JSON.parse(process.env.RATE_LIMITS))) if (LIMITS[k]) LIMITS[k] = [Number(v), LIMITS[k][1]]; }
+  catch { console.warn('RATE_LIMITS is not valid JSON, so it was ignored.'); }
+}
+const counters = new Map();                               // "limit name|who" -> { count, resetAt }
+function sweepCounters() {
+  const now = Date.now();
+  for (const [k, c] of counters) if (c.resetAt <= now) counters.delete(k);
+  while (counters.size > 50_000) counters.delete(counters.keys().next().value);   // the limiter must never use unbounded memory itself
+}
+setInterval(sweepCounters, MIN).unref();
+/** Count one request against a limit; refuse with 429 (and how long to wait) once the allowance is used up. */
+function take(name, who) {
+  if (RATE_OFF) return;
+  const [limit, windowMs] = LIMITS[name], key = `${name}|${who}`, now = Date.now();
+  let c = counters.get(key);
+  if (!c || c.resetAt <= now) { if (counters.size > 100_000) sweepCounters(); c = { count: 0, resetAt: now + windowMs }; counters.set(key, c); }
+  if (++c.count > limit) throw new HttpError(429, 'Too many requests. Please wait a little and try again.', 'rate_limited', Math.max(1, Math.ceil((c.resetAt - now) / 1000)));
+}
+const clientIp = req => (TRUST_PROXY ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '') || req.socket.remoteAddress || 'unknown';
+// wrong passwords are counted per account name; after loginFail wrong tries the account refuses logins for a while
+function loginLocked(email) {
+  if (RATE_OFF) return;
+  const c = counters.get(`loginFail|${email}`);
+  if (c && c.resetAt > Date.now() && c.count >= LIMITS.loginFail[0]) throw new HttpError(429, 'Too many wrong passwords. Please wait a few minutes and try again.', 'locked', Math.ceil((c.resetAt - Date.now()) / 1000));
+}
+function loginFailed(email) {
+  if (RATE_OFF) return;
+  const key = `loginFail|${email}`, now = Date.now(), c = counters.get(key);
+  if (!c || c.resetAt <= now) counters.set(key, { count: 1, resetAt: now + LIMITS.loginFail[1] }); else c.count++;
+}
+const loginOk = email => counters.delete(`loginFail|${email}`);
 
 // Rules: keep in sync with data/live_db.py (the tested reference implementation).
 const ALERT_THRESHOLD = 5, PAIR_CAP = 15, WINDOW_DAYS = 30;
@@ -24,9 +81,11 @@ if (!fs.existsSync(catalogPath)) { console.error('catalog.db not found. Run: npm
 const db = new DatabaseSync(path.join(DATA, 'live.db'));
 db.exec('PRAGMA foreign_keys = ON');
 if (!db.prepare("SELECT 1 FROM sqlite_master WHERE name='users'").get()) db.exec(fs.readFileSync(path.join(DATA, 'live_schema.sql'), 'utf8'));
+if (!db.prepare('PRAGMA table_info(users)').all().some(c => c.name === 'google_email')) db.exec('ALTER TABLE users ADD COLUMN google_email TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_email ON users (google_email)');   // one Gmail address per account; NULLs are allowed many times
 db.exec(`ATTACH DATABASE '${catalogPath.replace(/'/g, "''")}' AS catalog`);
 
-class HttpError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
+class HttpError extends Error { constructor(code, msg, reason, retryAfter) { super(msg); this.code = code; this.reason = reason; this.retryAfter = retryAfter; } }
 const q = sql => db.prepare(sql);
 
 function purge() {
@@ -47,19 +106,63 @@ function splitName(full) {   // "Alex Morgan" or "Morgan, Alex" -> stored as "La
   const parts = full.split(' ');
   return { first: parts[0], last: parts.slice(1).join(' ') };
 }
-const publicUser = u => ({ userName: u.user_name, firstName: firstOf(u.user_name), email: u.email, token: u.token, memberSince: u.created_at, profile: { state: u.state, ageGroup: u.age_group, language: u.language } });
+const publicUser = u => ({ userName: u.user_name, firstName: firstOf(u.user_name), email: u.email, token: u.token, memberSince: u.created_at, gmail: u.google_email || null, profile: { state: u.state, ageGroup: u.age_group, language: u.language } });
 function cleanProfile(b) {
   if (!STATES.includes(b.state)) throw new HttpError(400, 'Please choose your state.');
   if (!AGE_GROUPS.includes(b.ageGroup)) throw new HttpError(400, 'Please choose your age range.');
   if (!LANGUAGES.includes(b.language)) throw new HttpError(400, 'Please choose your language.');
   return { state: b.state, age_group: b.ageGroup, language: b.language };
 }
-const userFrom = req => {
-  const t = (req.headers.authorization || '').replace(/^Bearer /, '');
-  const u = t && q('SELECT * FROM users WHERE token = ?').get(t);
+const bearer = req => (req.headers.authorization || '').replace(/^Bearer /, '').trim();
+const looksLikeJwt = t => /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(t);
+
+/** Who is calling with a Google sign-in token. Google's signature is checked, so the email can be trusted. */
+async function googleIdentity(req) {
+  const t = bearer(req);
+  if (!t || !looksLikeJwt(t)) throw new HttpError(401, 'Not signed in.');
+  if (!google.enabled) throw new HttpError(501, 'Gmail sign-in is not set up on this server.', 'google_disabled');
+  try { return await google.verify(t); }
+  catch (e) {
+    if (e instanceof GoogleAuthError) {
+      console.warn(`Google sign-in rejected: ${e.message}${e.detail?.aud ? ` (token audience: ${[].concat(e.detail.aud).join(', ')}; set GOOGLE_AUDIENCE to it if this is your add-on)` : ''}`);
+      throw new HttpError(401, 'Google sign-in was not accepted.', 'google_rejected');
+    }
+    if (e instanceof GoogleUnavailableError) { console.warn(`Google sign-in unavailable: ${e.message}`); throw new HttpError(503, 'Could not reach Google to check your sign-in. Please try again.', 'google_unavailable'); }
+    throw e;
+  }
+}
+
+/** The signed-in person (and counts the request against that person's limit). A Google token is accepted only where allowGoogle is true, so it can never fetch the long-lived key. */
+async function userFrom(req, { allowGoogle = false, rate = 'readUser' } = {}) {
+  const t = bearer(req);
+  let u = t && q('SELECT * FROM users WHERE token = ?').get(t);
+  if (!u && allowGoogle && looksLikeJwt(t)) {
+    const g = await googleIdentity(req);
+    u = q('SELECT * FROM users WHERE google_email = ?').get(g.email);
+    if (!u) throw new HttpError(404, 'This Gmail address is not linked to a SwivProtect account yet.', 'not_linked');
+  }
   if (!u) throw new HttpError(401, 'Not signed in.');
+  take(rate, u.id);
   return u;
-};
+}
+
+// One-time codes that link a Gmail address to a SwivProtect account. They live in memory only and expire.
+const linkCodes = new Map();   // code -> { userId, expires }
+const failedLinks = new Map(); // gmail address -> { count, resetAt }
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0, O, 1, I or L
+const cleanCode = s => String(s || '').slice(0, 40).toUpperCase().replace(/[^A-Z0-9]/g, '');
+function newLinkCode(userId) {
+  for (const [c, v] of linkCodes) if (v.userId === userId || v.expires < Date.now()) linkCodes.delete(c);   // one live code per person
+  let code;
+  do { code = Array.from({ length: 8 }, () => CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)]).join(''); } while (linkCodes.has(code));
+  linkCodes.set(code, { userId, expires: Date.now() + LINK_CODE_TTL_MS });
+  return `${code.slice(0, 4)}-${code.slice(4)}`;
+}
+const tooManyFailures = key => { const f = failedLinks.get(key); return !!f && f.resetAt > Date.now() && f.count >= 5; };
+function noteFailure(key) {
+  const now = Date.now(), f = failedLinks.get(key);
+  if (!f || f.resetAt <= now) failedLinks.set(key, { count: 1, resetAt: now + 10 * 60_000 }); else f.count++;
+}
 
 // ---- reports + the alert trigger ----
 function flagsFor(scamId, language) {
@@ -159,11 +262,33 @@ async function aiExplain(text, scam, language) {
 
 // ---- http ----
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
-const readBody = req => new Promise(r => { let b = ''; req.on('data', c => b += c); req.on('end', () => { try { r(JSON.parse(b || '{}')); } catch { r({}); } }); });
-const send = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization', 'access-control-allow-methods': 'GET,POST,PUT,OPTIONS' }); res.end(JSON.stringify(obj)); };
+const SECURITY = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'x-frame-options': 'DENY' };
+/** The request body as JSON, refusing anything bigger than MAX_BODY_BYTES instead of holding it in memory. */
+const readBody = req => new Promise((resolve, reject) => {
+  if (Number(req.headers['content-length']) > MAX_BODY_BYTES) return reject(new HttpError(413, 'That request is too large.', 'too_large'));
+  const chunks = []; let size = 0, refused = false;
+  req.on('data', c => {
+    if (refused) return;
+    size += c.length;
+    if (size > MAX_BODY_BYTES) { refused = true; req.pause(); return reject(new HttpError(413, 'That request is too large.', 'too_large')); }
+    chunks.push(c);
+  });
+  req.on('end', () => { if (refused) return; try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch { resolve({}); } });
+  req.on('error', () => resolve({}));
+});
+// No CORS headers on purpose: the apps are served from this same address, and the Gmail add-on calls from Google's servers, not a browser.
+// Leaving cross-site access open would let any web page use its visitors' browsers to flood sign-ups from many addresses.
+const send = (res, code, obj, extra = {}) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store', ...SECURITY, ...extra }); res.end(JSON.stringify(obj)); };
 
 async function route(req, res, url) {
   const p = url.pathname, m = req.method;
+  if (p.startsWith('/api/')) {   // allowances per address, before any work is done
+    const ip = clientIp(req);
+    if (m === 'POST' && p === '/api/signup') { take('signupIp', ip); take('signupAll', '*'); }
+    else if (m === 'POST' && p === '/api/login') take('loginIp', ip);
+    else if (m === 'POST' && p === '/api/analyze') take('analyzeIp', ip);
+    else take('readIp', ip);
+  }
 
   if (p === '/api/options') return send(res, 200, { states: STATES, ageGroups: AGE_GROUPS, languages: LANGUAGES });
   if (p === '/api/catalog') return send(res, 200, {
@@ -173,8 +298,12 @@ async function route(req, res, url) {
 
   if (p === '/api/signup' && m === 'POST') {
     const b = await readBody(req);
-    const { first, last } = splitName(String(b.fullName || ''));
+    const rawName = String(b.fullName || '');
+    if (rawName.trim().length > 80) throw new HttpError(400, 'That name is too long. Please use 80 characters or fewer.');
+    const { first, last } = splitName(rawName);
     const email = String(b.email || '').trim().toLowerCase(), pw = String(b.password || '');
+    if (email.length > 254) throw new HttpError(400, 'That email address is too long.');
+    if (pw.length > 128) throw new HttpError(400, 'That password is too long. Please use 128 characters or fewer.');
     if (!first) throw new HttpError(400, 'Please enter your full name.');
     if (!/^\S+@\S+\.\S+$/.test(email)) throw new HttpError(400, 'Please enter a valid email address.');
     if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) throw new HttpError(400, 'Use at least 8 characters, with a letter and a number.');
@@ -187,12 +316,15 @@ async function route(req, res, url) {
   }
   if (p === '/api/login' && m === 'POST') {
     const b = await readBody(req);
-    const u = q('SELECT * FROM users WHERE email = ?').get(String(b.email || '').trim().toLowerCase());
-    if (!u || !u.salt || hash(String(b.password || ''), u.salt) !== u.pw_hash) throw new HttpError(401, 'Wrong email or password.');
+    const email = String(b.email || '').trim().toLowerCase().slice(0, 254), pw = String(b.password || '');
+    loginLocked(email);
+    const u = q('SELECT * FROM users WHERE email = ?').get(email);
+    if (pw.length > 128 || !u || !u.salt || hash(pw, u.salt) !== u.pw_hash) { loginFailed(email); throw new HttpError(401, 'Wrong email or password.'); }
+    loginOk(email);
     return send(res, 200, publicUser(u));
   }
   if (p === '/api/me') {
-    const u = userFrom(req);
+    const u = await userFrom(req);
     if (m === 'PUT') {
       const prof = cleanProfile(await readBody(req));
       q('UPDATE users SET state = ?, age_group = ?, language = ? WHERE id = ?').run(prof.state, prof.age_group, prof.language, u.id);
@@ -200,17 +332,38 @@ async function route(req, res, url) {
     return send(res, 200, publicUser(q('SELECT * FROM users WHERE id = ?').get(u.id)));
   }
 
+  // Link a Gmail address to this account: the app shows a code, the Gmail add-on submits it with Google's sign-in token.
+  if (p === '/api/link-code' && m === 'POST') {
+    const u = await userFrom(req, { rate: 'linkCodeUser' });
+    return send(res, 200, { code: newLinkCode(u.id), expiresInSeconds: Math.round(LINK_CODE_TTL_MS / 1000) });
+  }
+  if (p === '/api/link-gmail' && m === 'POST') {
+    const g = await googleIdentity(req), b = await readBody(req);
+    if (tooManyFailures(g.email)) throw new HttpError(429, 'Too many tries. Please wait a few minutes and try again.', 'too_many');
+    const code = cleanCode(b.code), entry = linkCodes.get(code);
+    if (!entry || entry.expires < Date.now()) { noteFailure(g.email); throw new HttpError(400, 'That code is not valid or has expired. Make a new one in the SwivProtect app (Edit profile).', 'bad_code'); }
+    if (q('SELECT 1 FROM users WHERE google_email = ? AND id != ?').get(g.email, entry.userId)) throw new HttpError(409, 'That Gmail address is already linked to a different SwivProtect account. Unlink it there first.', 'already_linked');
+    q('UPDATE users SET google_email = ? WHERE id = ?').run(g.email, entry.userId);
+    linkCodes.delete(code);
+    return send(res, 200, { linked: true, email: g.email });
+  }
+  if (p === '/api/unlink-gmail' && m === 'POST') {
+    const u = await userFrom(req);
+    q('UPDATE users SET google_email = NULL WHERE id = ?').run(u.id);
+    return send(res, 200, { linked: false });
+  }
+
   if (p === '/api/reports' && m === 'POST') {
-    const u = userFrom(req), b = await readBody(req);
+    const u = await userFrom(req, { rate: 'reportUser' }), b = await readBody(req);
     return send(res, 201, { ...submitReport(u, Number(b.scamId), b.source, b.outcome), recovery: b.outcome === 'fell_for' ? RECOVERY.default : null });
   }
   if (p === '/api/my-reports') {
-    const u = userFrom(req);
+    const u = await userFrom(req);
     purge();
     return send(res, 200, { reports: q(`SELECT r.id, r.outcome, r.source, r.started_alert, r.created_at, s.name scam FROM reports r JOIN catalog.scams s ON s.id = r.scam_id WHERE r.user_id = ? ORDER BY r.id DESC`).all(u.id) });
   }
   if (p === '/api/notifications') {
-    const u = userFrom(req);
+    const u = await userFrom(req);
     purge();
     return send(res, 200, { notifications: q(`SELECT n.id, n.message, n.created_at, n.scam_id, s.name scam FROM notifications n JOIN catalog.scams s ON s.id = n.scam_id WHERE n.user_id = ? ORDER BY n.id DESC LIMIT 20`).all(u.id) });
   }
@@ -221,8 +374,8 @@ async function route(req, res, url) {
 
   // The "during attack" endpoint: web app, Gmail add-on and SMS automation all call this with the user's key.
   if (p === '/api/analyze' && m === 'POST') {
-    const u = userFrom(req), b = await readBody(req);
-    const text = `${b.subject || ''}\n${b.body || ''}`;
+    const u = await userFrom(req, { allowGoogle: true, rate: 'analyzeUser' }), b = await readBody(req);
+    const text = `${b.subject || ''}\n${b.body || ''}`.slice(0, 20_000);   // only the start of a message is scanned; real texts and emails are far shorter
     const r = analyze(text);
     const t = T[u.language] || T.English;
     const community = r.scam ? q(`SELECT COUNT(DISTINCT user_id) n FROM reports WHERE scam_id = ? AND (state = ? OR age_group = ? OR language = ?)`).get(r.scam.id, u.state, u.age_group, u.language).n : 0;
@@ -234,13 +387,23 @@ async function route(req, res, url) {
   // static
   const root = path.join(__dirname, 'public');
   const f = path.join(root, p === '/' ? 'index.html' : p);
-  if (!f.startsWith(root) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('Not found'); }
-  res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' });
+  if (!f.startsWith(root) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404, SECURITY); return res.end('Not found'); }
+  res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream', ...SECURITY });
   fs.createReadStream(f).pipe(res);
 }
 
-http.createServer(async (req, res) => {
-  if (req.method === 'OPTIONS') return send(res, 204, {});
+const server = http.createServer(async (req, res) => {
+  if (req.method === 'OPTIONS') return send(res, 405, { error: 'Method not allowed.' }, { allow: 'GET, POST, PUT' });
   try { await route(req, res, new URL(req.url, `http://${req.headers.host}`)); }
-  catch (e) { if (e instanceof HttpError) return send(res, e.code, { error: e.message }); console.error(e); send(res, 500, { error: 'Server error.' }); }
-}).listen(PORT, () => console.log(`Swivel running at http://localhost:${PORT}`));
+  catch (e) {
+    if (e instanceof HttpError) {
+      if (e.code === 413) res.once('finish', () => req.destroy());   // stop an oversized upload instead of reading it
+      return send(res, e.code, { error: e.message, ...(e.reason ? { code: e.reason } : {}) },
+        { ...(e.retryAfter ? { 'retry-after': String(e.retryAfter) } : {}), ...(e.code === 413 ? { connection: 'close' } : {}) });
+    }
+    console.error(e); send(res, 500, { error: 'Server error.' });
+  }
+});
+server.requestTimeout = 30_000;   // a request that takes longer than this to arrive is dropped
+server.headersTimeout = 15_000;
+server.listen(PORT, () => console.log(`Swivel running at http://localhost:${PORT}`));

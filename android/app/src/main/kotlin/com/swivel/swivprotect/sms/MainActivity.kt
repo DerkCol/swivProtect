@@ -98,14 +98,19 @@ class MainActivity : Activity() {
 
     /** What the web app can ask the phone to do. Only pages from the SwivProtect server can reach this. */
     inner class Bridge {
-        @JavascriptInterface fun saveSession(token: String) { prefs.key = token }
-        @JavascriptInterface fun clearSession() { prefs.key = "" }
+        @JavascriptInterface fun saveSession(token: String) {
+            if (token != prefs.key) prefs.announcedUpTo = 0          // a different person: start their alert history fresh
+            prefs.key = token
+            AlertCheckJob.schedule(this@MainActivity)               // the background check needs a login
+        }
+        @JavascriptInterface fun clearSession() { prefs.key = ""; prefs.announcedUpTo = 0; AlertCheckJob.cancel(this@MainActivity) }
         @JavascriptInterface fun permissionStatus(): String = JSONObject()
             .put("sms", checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED)
             .put("contacts", Contacts.hasPermission(this@MainActivity))
             .put("notifications", Notifier.canNotify(this@MainActivity)).toString()
         @JavascriptInterface fun requestPermissions() { runOnUiThread { requestPermissions(needed().toTypedArray(), 1) } }
-        @JavascriptInterface fun notify(id: String, title: String, body: String) { Notifier.showSimple(this@MainActivity, id.hashCode(), title, body) }
+        @JavascriptInterface fun notifyAlert(id: Long, body: String) { Alerts.announce(this@MainActivity, id, body) }
+        @JavascriptInterface fun markSeen(id: Long) { Alerts.markSeen(this@MainActivity, id) }
     }
 
     private fun showProblem(msg: String) { problemText.text = msg; address.setText(prefs.serverUrl); problem.visibility = View.VISIBLE }

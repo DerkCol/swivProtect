@@ -25,7 +25,7 @@ object Notifier {
         nm.createNotificationChannel(NotificationChannel("community_alerts", "Community alerts", NotificationManager.IMPORTANCE_HIGH))
         val open = PendingIntent.getActivity(c, id, Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        nm.notify(id, Notification.Builder(c, "community_alerts").setSmallIcon(android.R.drawable.ic_dialog_alert)
+        nm.notify(id, Notification.Builder(c, "community_alerts").setSmallIcon(R.drawable.ic_stat_shield)
             .setContentTitle(title).setContentText(body).setStyle(Notification.BigTextStyle().bigText(body))
             .setContentIntent(open).setAutoCancel(true).build())
     }
@@ -54,7 +54,7 @@ object Notifier {
         }
         val open = PendingIntent.getActivity(c, id, popup, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = Notification.Builder(c, CHANNEL)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setSmallIcon(R.drawable.ic_stat_shield)
             .setContentTitle(r.headline)
             .setContentText(detail)
             .setStyle(Notification.BigTextStyle().bigText(detail))

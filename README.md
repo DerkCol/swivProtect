@@ -24,20 +24,46 @@ Optional: `ANTHROPIC_API_KEY=sk-... npm start` adds a plain-language Claude expl
 ## Tiers
 - **Before**: community alerts. When 5 people report the same scam within 30 days and share a state, age range or language,
   everyone else with that state / age range / language gets the red-flag words in their language (Alerts tab).
-- **During**: `/api/analyze` scans a message against the catalog's red flags. Used by the Check tab, the Gmail add-on and the SMS automation.
+- **During**: `/api/analyze` scans a message against the catalog's red flags. Used by the Check tab, the Gmail add-on and the Android text checker.
 - **After**: Report tab. Victims get recovery steps; everyone's report feeds the alerts above.
 
-## Gmail add-on
-1. `ngrok http 3000`, put the URL in `gmail-addon/Code.gs` (`API`) and `appsscript.json` `urlFetchWhitelist`.
-2. Me tab -> copy your key -> paste into `TOKEN` in `Code.gs`.
-3. script.google.com -> new project -> paste both files (show manifest in settings) -> Deploy -> Test deployment -> Gmail add-on.
+## Abuse protection (server.js)
+Added after testing showed 100 simultaneous sign-ups, unlimited password guesses, a 1 MB name and a 40 MB upload were all accepted. Now:
+- **Size:** a request body over 100 KB is refused (413) without being read (`MAX_BODY_BYTES`). Name 80, email 254, password 128 characters. Only the first 20,000 characters of a message are scanned.
+- **Rate limits** (in memory, per address or per signed-in person, answered with 429 and a Retry-After): sign-ups 60 an hour per address and 600 an hour overall (this also caps how fast the user table can grow), logins 100 per 10 minutes per address,
+  scam checks 60 a minute per person, reports 30 an hour, link codes 10 an hour, everything else 120 a minute per person and 1200 a minute per address (the app itself uses about 15 a minute).
+- **Lockout:** 10 wrong passwords on one account refuses logins to it for 15 minutes (right password included).
+- **Closed doors:** no cross-site (CORS) access, so a web page cannot use visitors' browsers to flood the API; `X-Frame-Options`, `nosniff`, `no-referrer`, `no-store` headers; the Google key address must be https; request timeouts of 30 seconds.
+- **Polite refreshing:** the app stops its 10-second refresh while hidden, never runs two refreshes at once, and waits when told to slow down.
+- Settings: `RATE_LIMITS='{"signupIp":5}'` changes a limit, `RATE_LIMITS=off` disables them (development only). Behind a proxy or tunnel that sets X-Forwarded-For, start with `TRUST_PROXY=1`, otherwise everyone behind it shares one allowance.
+  Counters live in memory, so restarting the server resets them.
+- Debugging: WebView debugging is on only for debug builds of the Android app (never ship the debug APK); the add-on's `SWIVEL_DEBUG` card only shows your own sign-in details and only when you set it; error answers never include server details.
+
+## Gmail add-on (gmail-addon/)
+Checks the email you open and shows a warning card (scam, warning words, what to do). Only the subject and text of the opened email are sent; the server does not store them.
+It can identify the user in two ways:
+- **Google sign-in (default, nothing to copy).** The add-on sends Google's sign-in token. The server accepts it only if it is signed by Google, unexpired, has a verified email, and was issued to the client ID in `GOOGLE_AUDIENCE`.
+  The first time, the add-on asks for a one-time code: in the app open Edit profile, Gmail add-on, Get a link code (works once, expires in 10 minutes). That links the Gmail address to the account; after that it is automatic.
+  A Google token can only reach the email check, never the account or its private key. Linking needs the code on purpose, so nobody can claim someone else's Gmail address.
+- **A key (simple, for one tester).** Set the script property `SWIVEL_TOKEN` to the key shown in Edit profile, Private key.
+
+Server: Gmail sign-in is off unless you start it with the client ID, `GOOGLE_AUDIENCE=<client id> npm start` (several IDs may be separated by commas).
+To find the client ID, set the script property `SWIVEL_DEBUG=1` and open the add-on home card (it shows the audience), or try once and read the server log: a rejected token prints the audience it saw.
+Other settings: `LINK_CODE_TTL_SECONDS` (default 600), `GOOGLE_JWKS_URL` and `SWIVEL_DATA_DIR` (used by tests).
+
+Google side: script.google.com, new project, paste `Code.gs` and `appsscript.json` (Project Settings, show the manifest file), add script properties `SWIVEL_API` (the server's public https address, no trailing slash)
+and optionally `SWIVEL_TOKEN` or `SWIVEL_DEBUG`, then Deploy, Test deployments, install. Google needs a public https address, not localhost, for example a tunnel.
+Permissions asked: read the email being opened (`gmail.addons.current.message.readonly`), your Google email address (`openid`, `userinfo.email`), and contact the server.
+
+Tests: `npm test` (token checking, linking, and every add-on path using stand-ins for Google's services; this cannot prove Google's real services behave the same).
 
 ## Android app (android/): the full SwivProtect app
 The Android app shows the same screens as the web app (login, home, alerts, reports, check a message, profile) inside a WebView, so there is one UI to maintain, and adds the phone-only parts through a small bridge:
 - It remembers your login by itself, so the text-message checker needs no copy and paste.
 - After sign-up it asks for the phone permissions (receive SMS, read contacts to skip saved numbers, notifications). No send-SMS permission.
 - Texts from numbers that are NOT in your contacts are checked on the server (only the message text is sent, never the number). A warning notification opens a popup about that scam, with a Report button.
-- Community alerts from the web app arrive as real phone notifications while the app is open.
+- Community alerts arrive as real phone notifications. While the app is open it checks every 10 seconds; when it is closed, Android runs a background check about every 15 minutes (the shortest repeat Android allows, so an alert can be up to about 15 minutes late). The phone remembers which alerts it already announced, so nothing arrives twice. Alerts you missed show a "New" tag when you open the app. Instant delivery to a closed app would need Google's push service (Firebase), which is not set up.
+- Texts are different: a scam text is checked the moment it arrives, even if the app is closed (not force-stopped), because Android starts the app for it.
 - The Android Back button steps back through the app's own screens.
 
 Build and install on the emulator (needs Android Studio's Java; the first build downloads Gradle):

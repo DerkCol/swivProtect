@@ -6,6 +6,7 @@
     "setup": "python3 data/build_catalog.py",
     "start": "node server.js",
     "demo": "node demo-seed.js",
-    "reset": "rm -f data/live.db"
+    "reset": "rm -f data/live.db",
+    "test": "node --test \"test/*.test.mjs\""
   }
 }

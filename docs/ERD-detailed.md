@@ -28,6 +28,7 @@ erDiagram
     text salt "Random value mixed into the password hash"
     text pw_hash "Scrypt hash of the password, never the password"
     text token UK "Private key the apps send to identify the user"
+    text google_email UK "Gmail address linked to the Gmail add-on, if any"
     text state "US state they live in, 2-letter code"
     text age_group "18-25, 26-40, 41-60 or 60+"
     text language "English, Spanish, Chinese, Tagalog or Vietnamese"

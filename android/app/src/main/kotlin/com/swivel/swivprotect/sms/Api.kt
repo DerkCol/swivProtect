@@ -48,6 +48,26 @@ object Api {
         )
     }
 
+    data class AlertNote(val id: Long, val message: String)
+
+    /** The person's community alerts, newest first (the same list the app's Home screen shows). */
+    fun notifications(baseUrl: String, key: String): List<AlertNote> {
+        val conn = (URL("$baseUrl/api/notifications").openConnection() as HttpURLConnection).apply {
+            connectTimeout = 4000
+            readTimeout = 6000
+            setRequestProperty("Authorization", "Bearer $key")
+        }
+        try {
+            val code = conn.responseCode
+            val text = (if (code in 200..299) conn.inputStream else conn.errorStream).bufferedReader().use { it.readText() }
+            if (code !in 200..299) throw IOException("HTTP $code")
+            val a = JSONObject(text).getJSONArray("notifications")
+            return List(a.length()) { val n = a.getJSONObject(it); AlertNote(n.getLong("id"), n.getString("message")) }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     /** outcome: blocked | fell_for | unsure */
     fun report(baseUrl: String, key: String, scamId: Int, source: String, outcome: String): ReportResult {
         val j = post(baseUrl, key, "/api/reports", JSONObject().put("scamId", scamId).put("source", source).put("outcome", outcome))

@@ -198,8 +198,16 @@
   <div class="err" id="eErr" role="alert"></div>
   <button class="btn" id="saveProfile">Save</button>
   <div class="card" style="margin-top:28px">
-    <strong style="color:var(--purple)">Connect your devices</strong>
-    <p class="small" style="margin:6px 0">Paste this key into the Gmail add-on and the text-message automation so they know who you are. Keep it private.</p>
+    <strong style="color:var(--purple)">Gmail add-on</strong>
+    <p class="small" id="gmailState" style="margin:6px 0"></p>
+    <div id="gmailCode" class="hidden" style="font-size:32px;font-weight:800;letter-spacing:.12em;color:var(--purple);margin:10px 0 2px"></div>
+    <p class="small hidden" id="gmailCodeNote" style="margin:0 0 6px">Type this code into the SwivProtect add-on in Gmail. It works once and expires in 10 minutes.</p>
+    <button class="btn small-btn" id="gmailBtn">Get a link code</button>
+    <button class="btn outline small-btn hidden" id="gmailUnlink">Unlink Gmail</button>
+  </div>
+  <div class="card">
+    <strong style="color:var(--purple)">Private key</strong>
+    <p class="small" style="margin:6px 0">For connecting other tools to your account. Keep it private.</p>
     <input id="tokenBox" readonly onclick="this.select()">
   </div>
 </section>
@@ -230,10 +238,13 @@ let me = JSON.parse(localStorage.getItem('swivel-me') || 'null');
 let cats = [], scams = [], draft = null;
 const seenKey = () => 'swivel-seen-' + (me ? me.email : '');
 let seen = new Set(), firstLoad = true;
+const notified = new Set();   // alerts already announced as phone notifications in this session
 
+let backoffUntil = 0;   // when the server says "slow down" (429), the background refresh waits this long
 async function api(path, method = 'GET', body) {
   const r = await fetch(path, { method, headers: { 'content-type': 'application/json', ...(me ? { authorization: 'Bearer ' + me.token } : {}) }, body: body && JSON.stringify(body) });
-  const j = await r.json();
+  if (r.status === 429) backoffUntil = Date.now() + (Number(r.headers.get('retry-after')) || 30) * 1000;
+  const j = await r.json().catch(() => ({}));
   if (r.status === 401 && me && path !== '/api/login') signOut();
   if (!r.ok) throw new Error(j.error || 'Something went wrong');
   return j;
@@ -331,21 +342,31 @@ async function loadHome() {
   renderNative();
   await Promise.all([loadAlerts(), loadMyReports()]);
 }
-async function loadAlerts() {
+let alertsBusy = false;
+async function loadAlerts() {   // one refresh at a time, so a slow server never gets a pile of overlapping requests
+  if (!me || alertsBusy) return;
+  alertsBusy = true;
+  try { await loadAlertsNow(); } finally { alertsBusy = false; }
+}
+async function loadAlertsNow() {
   if (!me) return;
   const [{ notifications }, st] = await Promise.all([api('/api/notifications'), api('/api/stats')]);
   const fresh = new Set(notifications.filter(n => !seen.has(n.id)).map(n => n.id));
-  if (!firstLoad && (native || ('Notification' in window && Notification.permission === 'granted')))
-    notifications.filter(n => fresh.has(n.id)).forEach(notify);
+  // A phone notification for each alert that is new since you were last told (not on the very first load: you are looking at the list then).
+  // In the Android app the phone also remembers what it announced, so its 15-minute background check and this never double up.
+  if (firstLoad) notifications.forEach(n => notified.add(n.id));
+  else if (native || ('Notification' in window && Notification.permission === 'granted'))
+    notifications.filter(n => fresh.has(n.id) && !notified.has(n.id)).sort((a, b) => a.id - b.id).forEach(n => { notified.add(n.id); notify(n); });
+  if (native && notifications.length) native.markSeen(Math.max(...notifications.map(n => n.id)));
   if ($('home').classList.contains('on')) {
     $('alertList').innerHTML = notifications.length ? notifications.map(n => `
-      <div class="card alert"><div class="row"><strong>${esc(n.scam)}</strong>${fresh.has(n.id) && !firstLoad ? '<span class="chip new">New</span>' : ''}</div>
+      <div class="card alert"><div class="row"><strong>${esc(n.scam)}</strong>${fresh.has(n.id) ? '<span class="chip new">New</span>' : ''}</div>
       <div class="small">${fmtDate(n.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div><p style="margin:8px 0 0">${esc(n.message)}</p></div>`).join('')
       : '<div class="card small" style="margin:0">No scam waves reported for people like you right now. We will show alerts here as soon as there is one.</div>';
-    $('unread').textContent = fresh.size; $('unread').classList.toggle('hidden', !fresh.size || firstLoad);
+    $('unread').textContent = fresh.size; $('unread').classList.toggle('hidden', !fresh.size);
     notifications.forEach(n => seen.add(n.id));
     localStorage.setItem(seenKey(), JSON.stringify([...seen]));
-    $('stats').textContent = `Past 30 days: ${st.reports} scam reports, ${st.blocked} people stopped one, ${st.alerts} alerts sent.`;
+    $('stats').textContent = `Past 30 days: ${st.reports} scam ${st.reports === 1 ? 'report' : 'reports'}, ${st.blocked} ${st.blocked === 1 ? 'person' : 'people'} stopped one, ${st.alerts} ${st.alerts === 1 ? 'alert' : 'alerts'} sent.`;
   }
   firstLoad = false;
 }
@@ -361,20 +382,45 @@ async function loadMyReports() {
 let swReg = null;
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r => swReg = r).catch(() => {});
 function notify(n) {   // Android Chrome only allows notifications through the service worker
-  if (native) { native.notify('alert-' + n.id, 'SwivProtect', n.message); return; }
+  if (native) { native.notifyAlert(n.id, n.message); return; }
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const o = { body: n.message, icon: '/icon-192.png', badge: '/icon-192.png', tag: 'alert-' + n.id };
   if (swReg) swReg.showNotification('SwivProtect', o); else { try { new Notification('SwivProtect', o); } catch {} }
 }
 $('notifBtn').onclick = async () => { const p = await Notification.requestPermission(); $('notifBtn').textContent = p === 'granted' ? 'Phone alerts are on' : 'Alerts are blocked in browser settings'; };
-setInterval(() => me && loadAlerts().catch(() => {}), 10000);
+setInterval(() => { if (me && !document.hidden && Date.now() >= backoffUntil) loadAlerts().catch(() => {}); }, 10000);   // not while the app is hidden
+document.addEventListener('visibilitychange', () => { if (!document.hidden && me && Date.now() >= backoffUntil) loadAlerts().catch(() => {}); });
 
 // ---------- edit profile
 function fillEdit() {
   $('editWho').textContent = `${me.firstName} · ${me.email}`;
   $('eState').value = me.profile.state; $('eAge').value = me.profile.ageGroup; $('eLang').value = me.profile.language;
   $('tokenBox').value = me.token;
+  renderGmail();
+  refreshGmail().catch(() => {});
 }
+
+// ---------- Gmail add-on: link a Gmail address once with a short code
+function renderGmail() {
+  const linked = !!me.gmail;
+  $('gmailState').textContent = linked ? `Linked to ${me.gmail}. The add-on checks emails you open in Gmail.`
+    : 'Not linked. Install the SwivProtect add-on in Gmail, open it, and type a link code from here, once.';
+  $('gmailBtn').classList.toggle('hidden', linked);
+  $('gmailUnlink').classList.toggle('hidden', !linked);
+  $('gmailCode').classList.add('hidden'); $('gmailCodeNote').classList.add('hidden');
+}
+async function refreshGmail() { const u = await api('/api/me'); me.gmail = u.gmail; localStorage.setItem('swivel-me', JSON.stringify(me)); renderGmail(); }
+$('gmailBtn').onclick = async () => {
+  try {
+    const r = await api('/api/link-code', 'POST');
+    $('gmailCode').textContent = r.code; $('gmailCode').classList.remove('hidden'); $('gmailCodeNote').classList.remove('hidden');
+  } catch (e) { $('eErr').textContent = e.message; }
+};
+$('gmailUnlink').onclick = async () => {
+  try { await api('/api/unlink-gmail', 'POST'); me.gmail = null; localStorage.setItem('swivel-me', JSON.stringify(me)); renderGmail(); }
+  catch (e) { $('eErr').textContent = e.message; }
+};
+
 $('saveProfile').onclick = async () => {
   try { setMe({ ...(await api('/api/me', 'PUT', { state: $('eState').value, ageGroup: $('eAge').value, language: $('eLang').value })) }); history.back(); }
   catch (e) { $('eErr').textContent = e.message; }
@@ -387,7 +433,7 @@ $('analyze').onclick = async () => {
     ${r.scam ? `<p>Looks like: <strong>${esc(r.scam.name)}</strong></p><p class="small">${esc(r.scam.summary)}</p><p class="small"><b>What to do:</b></p><ul class="small">${r.scam.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
     ${r.ai ? `<p>${esc(r.ai)}</p>` : ''}
     ${r.hits.length ? '<p class="small">Warning signs: ' + r.hits.map(h => `<span class="pill">${esc(h)}</span>`).join('') + '</p>' : ''}
-    ${r.community ? `<p class="small">${r.community} people like you reported this scam in the past month.</p>` : ''}
+    ${r.community ? `<p class="small">${r.community} ${r.community === 1 ? 'person' : 'people'} like you reported this scam in the past month.</p>` : ''}
     ${r.recovery ? '<p class="small"><b>If you already clicked or paid:</b></p><ol class="small">' + r.recovery.map(s => `<li>${esc(s)}</li>`).join('') + '</ol>' : ''}
     <p class="small">When in doubt, hang up, delete, and call someone you trust.</p></div>`;
 };

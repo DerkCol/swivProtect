@@ -9,7 +9,7 @@ Nothing here is a secret. Do not paste access tokens or passwords into chat or f
 **SwivProtect** is a hackathon project by/for **Swivel** (the logo reads "An SWBC Company"): scam protection for older adults, in three tiers.
 
 1. **Before an attack:** people sign up with state, age range and preferred language. When 5 different people report the same scam within 30 days and share a state, age range or language, everyone else with that value gets an alert listing 3-5 warning words, in their language.
-2. **During an attack:** a message is checked against the red-flag words of a static catalog of 20 scams. On Android, texts from numbers NOT in contacts are checked automatically and a warning notification opens a popup about that scam with a Report button. A Gmail add-on is written but untested.
+2. **During an attack:** a message is checked against the red-flag words of a static catalog of 20 scams. On Android, texts from numbers NOT in contacts are checked automatically and a warning notification opens a popup about that scam with a Report button. A Gmail add-on is written (Google sign-in with a one-time link code, or a key) and covered by automated tests that use stand-ins for Google, but it has never been deployed to Google.
 3. **After an attack:** a 4-step report flow (category, scam, SMS or Email, did you lose money). Victims get recovery steps. Reports feed the alerts above.
 
 The owner is presenting science-fair style. The demo is **recorded inside Android Studio's emulator** and put in a slideshow. It does not need other devices.
@@ -22,7 +22,7 @@ The owner is presenting science-fair style. The demo is **recorded inside Androi
 - Never ask them to paste tokens or passwords. The GitHub push is blocked on THEIR sign-in (see section 8).
 - Show before you delete. They explicitly authorized deleting things nobody discussed, but git is the safety net, so commit when they ask.
 
-## 3. Repository layout (`/Users/derekcolon/swivel`, git repo, branch `main`)
+## 3. Repository layout (`~/swivel`, git repo, branch `main`)
 
 ```
 server.js                 Node HTTP server, no dependencies. Serves public/ and the /api routes. Uses built-in node:sqlite.
@@ -42,7 +42,9 @@ public/
   manifest.webmanifest, sw.js, icon-*.png   PWA install support (generated shield icon).
   swivel-logo.svg         Swivel's registered logo. DELIBERATELY NOT IN GIT. App falls back to a text title if missing.
 android/                  Kotlin Android app (see section 6). Gradle wrapper included.
-gmail-addon/              Apps Script (Code.gs, appsscript.json). Written, never deployed or tested.
+gmail-addon/              Apps Script (Code.gs, appsscript.json). Tested with stand-ins for Google (`npm test`); never deployed to Google.
+googleAuth.js             Verifies Google sign-in (ID) tokens with no library. Used only for the Gmail add-on.
+test/                     Automated tests (`npm test`): token verifier, Gmail linking on the real server, every add-on code path.
 docs/                     ERD-detailed.md (Mermaid ERD with column descriptions), this file.
 README.md                 Run instructions.
 ```
@@ -54,6 +56,7 @@ npm run setup      # once: python3 data/build_catalog.py builds data/catalog.db
 npm start          # http://localhost:3000
 npm run demo       # second terminal: FL, 26-40, English, scam #1 -> fires an alert for anyone sharing state/age/language
 npm run reset      # wipes data/live.db (stop the server first or restart it after)
+npm test           # 31 tests: Gmail sign-in verifier, linking flow on a real server with a temp database, and gmail-addon/Code.gs paths
 ```
 Node 24 (built-in `node:sqlite` prints an "experimental" warning, harmless). Python 3 is only needed for `npm run setup`.
 
@@ -68,7 +71,22 @@ Two SQLite files, both attached on one connection in server.js. See `docs/ERD-de
   (Italian was dropped when the user said "top 5 languages in the US"; confirm if it matters).
 
 Auth: `Authorization: Bearer <token>`. Routes: `/api/options`, `/api/catalog`, `/api/signup`, `/api/login`, `/api/me` (GET/PUT),
-`/api/reports` (POST), `/api/my-reports`, `/api/notifications`, `/api/stats`, `/api/analyze` (POST, the "during attack" check).
+`/api/reports` (POST), `/api/my-reports`, `/api/notifications`, `/api/stats`, `/api/analyze` (POST, the "during attack" check),
+`/api/link-code` (POST, signed-in user gets a one-time code), `/api/link-gmail` (POST, Google token + code), `/api/unlink-gmail` (POST).
+
+Abuse protection (added after a flood test; see README "Abuse protection"): body cap 100 KB (413), field lengths, per-address and per-person rate limits (429 + Retry-After) held in memory in `server.js` (`LIMITS`, `take()`),
+per-account lockout after 10 wrong passwords, no CORS, security headers, `TRUST_PROXY` / `RATE_LIMITS` / `MAX_BODY_BYTES` settings, JWKS address must be https. Tests: `test/hardening.test.mjs`. The web app pauses its refresh when hidden and honours Retry-After.
+If something shows "Too many requests" during development, restart the server (counters reset) or start it with `RATE_LIMITS=off`.
+
+Gmail add-on sign-in (added later; read this before touching auth):
+- `users.google_email` (unique, nullable) holds the linked Gmail address; `live.db` files made before it existed are upgraded automatically on start.
+- Off unless `GOOGLE_AUDIENCE` is set (the OAuth client ID(s) the add-on's token is issued to). A JWT-shaped bearer then goes to `googleAuth.js`: RS256 only, signature checked against Google's published keys (cached,
+  refetched at most once a minute for an unknown key id), issuer Google, not expired, audience configured, email verified. Everything else is rejected.
+- A Google token is accepted ONLY by `/api/analyze` (as the linked user) and `/api/link-gmail`. It is refused everywhere else, so it can never fetch the long-lived `token` from `/api/me`.
+- Linking: the signed-in app asks `/api/link-code` for an 8-character code (in memory, single use, expires after `LINK_CODE_TTL_SECONDS`, default 600); the add-on sends it with the Google token to `/api/link-gmail`.
+  Five wrong tries per Gmail address per 10 minutes, then 429. A Gmail address already linked to a different account gets 409. The code step exists because SwivProtect does not verify sign-up emails, so matching by email alone would let someone register another person's address first.
+- Not verified against real Google: the audience value of a real Apps Script token. Use the add-on's `SWIVEL_DEBUG=1` home card or the server log to read it, then set `GOOGLE_AUDIENCE`.
+- The add-on requests only: `openid`, `userinfo.email`, `gmail.addons.execute`, `gmail.addons.current.message.readonly` (just the open email), `script.external_request`.
 
 Rules in code (server.js, mirrored in live_db.py):
 - Alert fires when `ALERT_THRESHOLD = 5` distinct reporters of one scam share state OR age_group OR language within 30 days. One alert per scam+dimension+value per window; reporters excluded; one notification per user per scam.
@@ -112,7 +130,9 @@ Gotchas found:
 - `adb shell pm grant` skips the real SMS permission prompt; revoke first to see real prompts (all three appear for a normal install).
 - On Android 13+, a sideloaded app may need Settings > Apps > SwivProtect > menu > "Allow restricted settings" before the SMS permission can be granted.
 - The first-run Chrome sign-in screens in the emulator need dismissing.
-- Notifications from the web app work only while the app is open (polls every 10 s). Closed-app alerts need push (not built).
+- Community-alert notifications: instant while the app is open (it polls every 10 s); when closed, `AlertCheckJob` (a JobScheduler job, id 4711, about every 15 minutes, persisted across restarts) fetches `/api/notifications` and announces new ones. `Alerts.kt` keeps one "announced up to alert N" pointer shared by the job and the web page (via the `notifyAlert` / `markSeen` bridge calls) so nothing is announced twice. Instant delivery to a closed app would need Firebase push (not built). To test the job without waiting: `adb shell cmd jobscheduler run -f com.swivel.swivprotect.sms 4711`.
+- Scam TEXTS are checked on arrival even when the app is closed (a manifest receiver; Android starts the process), except after Force stop.
+- Needs `RECEIVE_BOOT_COMPLETED` and `ACCESS_NETWORK_STATE` (the job has a network constraint; without the second one scheduling throws and used to block sign-in until it was caught).
 
 ## 7. Web app facts
 
@@ -143,9 +163,12 @@ and the `gh` CLI is not installed. The owner chose to skip GitHub for now. To pu
 
 ## 9. What the owner wants next (in order)
 
-1. **Gmail add-on** (next). Code exists in `gmail-addon/` (shows the same analysis as a card). Remaining: a public HTTPS address for the server (e.g. `brew install cloudflared` then
-   `cloudflared tunnel --url http://localhost:3000`), paste it plus the user's key into `Code.gs`, deploy as a Test deployment in the owner's Google account (only they can do this),
-   add the tips to the card. Estimated ~45 minutes. The owner does NOT need it to work on other devices.
+1. **Gmail add-on** (in progress). Code and server side are done and tested (see section 5). Remaining, all in the owner's hands because Google requires their sign-in and consent:
+   a public https address for the server (this campus Wi-Fi blocks Cloudflare's tunnel port 7844, SSH port 22 and the other usual tunnels; `ssh -T -p 443 -R0:localhost:3000 a.pinggy.io` worked, free tunnels last about 60 minutes and the
+   address changes, and Pinggy's browser warning page is skipped with the `X-Pinggy-No-Screen: 1` header the add-on already sends), then create the Apps Script project, set the script properties, install the test deployment,
+   read the audience from the `SWIVEL_DEBUG=1` home card, and restart the server with `GOOGLE_AUDIENCE`. Not possible for anyone to do silently for end users: Google requires each account owner (or their Workspace admin) to approve access.
+   Routes to real users: test install (no review), private install by a Workspace admin (no Google review), public Marketplace (Google review; `gmail.addons.current.message.readonly` is a "sensitive" scope).
+   Add-ons only run when an email is opened; they cannot warn on arrival. The owner does NOT need the add-on to work on other devices for the demo.
 2. **iOS expansion** (exploring, nothing built). See section 10.
 3. Commit the pending work and eventually push to GitHub.
 4. Optional ideas raised but not decided: translating the app's own UI text and the tips into the other four languages (owner said no to translating scam names; tips stay English),
@@ -180,7 +203,7 @@ This Mac (when the session was written) had only Command Line Tools, no Xcode. T
 
 ## 11. Environment notes (the machine the session ran on)
 
-macOS (Darwin 25.3), Apple Silicon (arm64), user `derekcolon`, zsh. Node v24.14.1, Python 3, git 2.50.1, Android Studio 2026.2,
+macOS (Darwin 25.3), Apple Silicon (arm64), the owner's user account, zsh. Node v24.14.1, Python 3, git 2.50.1, Android Studio 2026.2,
 Android SDK at `~/Library/Android/sdk` (emulator with Pixel 8a and "Medium Phone", both API 37 / Android 17 arm64, Google Play images; adb works). No `gh`, no `ngrok`, no `cloudflared` yet.
 On a new Mac: install Node 24+, Python 3, and for Android work Android Studio; paths above will differ.
 
@@ -194,6 +217,7 @@ On a new Mac: install Node 24+, Python 3, and for Android work Android Studio; p
 - Warnings show the headline translated but scam names/tips in English (owner said no to translating names).
 - Medium and high risk texts show the same popup with the Report button (owner decision).
 - Report stays one-per-person-per-scam; ethnicity was dropped from the data model.
+- Gmail add-on identifies people by Google sign-in plus a one-time link code (no key to paste); a key mode remains for a single tester. The owner approved "match by Gmail address"; the code step was added to close the unverified-email hole.
 
 ## 13. A raw transcript also exists
 
